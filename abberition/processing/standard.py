@@ -1,11 +1,11 @@
 # Create standard frames (bias, dark, flat) from a set of images
+from astropy.stats import mad_std
 import ccdproc as ccdp
 from ccdproc import ImageFileCollection
+import logging
 import numpy as np 
-from astropy.stats import mad_std
 import os
 from pathlib import Path
-import logging
 import processing_helpers
 
 
