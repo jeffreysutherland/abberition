@@ -11,3 +11,8 @@
 2. The act of becoming visible
 
 The goal of abberition is to get the most out of deeply flawed astronomical images.
+
+
+## TODO
+1. Create UI with qt/some web framework (django?)
+2. Integrate [Ryven](https://ryven.org/guide#/?id=programming-nodes) node editor for qt
