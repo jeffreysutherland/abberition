@@ -4,14 +4,23 @@ Create a library of reference frames (bias, dark, flat), that can be requested b
 
 from pathlib import Path
 
-library_path = Path('library')
+__library_path = Path(__file__ + '../library')
 
 temp_threshold = 0.25
+
+def save_bias():
+    raise NotImplementedError
+
+def save_dark():
+    raise NotImplementedError
+
+def save_flat():
+    raise NotImplementedError
 
 def select_bias(ifc_biases, ref_image):
     """
     Select a bias frame from ifc_biases that matches the parameters of the input ref image. 
-    TODO: enable cropped images by splitting out hte naxis1, naxis2 and adding xorgsubf and yorgsubf.
+    TODO: enable cropped images by splitting out the naxis1, naxis2 and adding xorgsubf and yorgsubf.
     
     Keywords requiring equal values matched are:
         'instrume' - Instrument name
@@ -76,7 +85,7 @@ def select_bias(ifc_biases, ref_image):
 
 
 
-def select_dark(ifc_darks, ref_image):
+def select_dark(ifc_darks, ref_image, ignore_temp=False):
     """
     Select a dark frame from ifc_darks that matches the parameters of the input reference image. 
     
@@ -131,6 +140,9 @@ def select_dark(ifc_darks, ref_image):
         ref_temp = float(ref_image.header['ccd-temp'])
         
         for dark, dark_filename in ifc_darks.ccds(return_fname=True):
+            if ignore_temp:
+                return dark, dark_filename
+            
             dark_temp = float(dark.header['ccd-temp'])
             
             if dark_temp > ref_temp - temp_threshold and dark_temp < ref_temp + temp_threshold:
