@@ -1,18 +1,46 @@
 '''
 Create a library of reference frames (bias, dark, flat), that can be requested based on the properties of an image.
+
+Images are selected through filters, so filenames are 
 '''
 
-from ccdproc import ImageFileCollection
+from ccdproc import CCDData, ImageFileCollection
 from pathlib import Path
 
 __library_path = Path(__file__ + '../library')
-
 __library_ifc = ImageFileCollection(__library_path)
 
 temp_threshold = 0.25
 
-def save_bias():
-    raise NotImplementedError
+def __generate_filename(image):
+    '''
+    Generate filename for image based on header values. Using binning instead resolution 
+    for filename as it's assumed it's using the entire sensor.
+    '''
+
+    instrument = image.header['instrume']
+    binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
+    imagetype = image.header['imagetyp']
+    
+    if imagetype == 'Bias Frame' or imagetype == 'Bias':
+        filename = 'bias.' + instrument + '.' + binning + '.fits'
+    elif imagetype == 'Dark Frame' or imagetype == 'Dark':
+        temp = str(image.header['ccd-temp'])
+        filename = 'dark.' + instrument + '.' + binning + '.' + temp + 'C.fits'
+    elif imagetype == 'Flat Field' or imagetype == 'Flat':
+        filename = 'flat.' + instrument + '.' + binning + '.' + image.header['filter'] + '.fits'
+         
+    return filename
+
+
+def save_bias(image: CCDData):
+    # check if image is already in library based on header values    
+    existing_bias = select_bias(image)
+        
+    filename = 
+    image.write(__library_path / 'bias')
+    
+    # if not, add to library
 
 def save_dark():
     raise NotImplementedError
