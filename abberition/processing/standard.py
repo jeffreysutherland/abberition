@@ -6,7 +6,7 @@ import logging
 import numpy as np 
 import os
 from pathlib import Path
-import abberition.processing.io as io
+import abberition.core.io as io
 
 
 def create_bias(biases: ImageFileCollection, out_file: Path, sigma_low=5.0, sigma_high=5.0, data_type=np.float32, overwrite=True):
@@ -97,7 +97,7 @@ def create_flats(ifc_biases, ifc_darks, ifc_flats, output_dir, min_exp=2.0, del_
     import numpy as np
     from astropy import units as u
     from astropy.io import fits
-    import abberition.processing.io as proc
+    import abberition.core.io as proc
     
     print('Creating master flats')
     
