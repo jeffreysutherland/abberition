@@ -2,9 +2,12 @@
 Create a library of reference frames (bias, dark, flat), that can be requested based on the properties of an image.
 '''
 
+from ccdproc import ImageFileCollection
 from pathlib import Path
 
 __library_path = Path(__file__ + '../library')
+
+__library_ifc = ImageFileCollection(__library_path)
 
 temp_threshold = 0.25
 
@@ -17,9 +20,9 @@ def save_dark():
 def save_flat():
     raise NotImplementedError
 
-def select_bias(ifc_biases, ref_image):
+def select_bias(image):
     """
-    Select a bias frame from ifc_biases that matches the parameters of the input ref image. 
+    Select a bias frame from the library that matches the parameters of the input ref image. 
     TODO: enable cropped images by splitting out the naxis1, naxis2 and adding xorgsubf and yorgsubf.
     
     Keywords requiring equal values matched are:
@@ -55,15 +58,16 @@ def select_bias(ifc_biases, ref_image):
 
     filters = {}
     filters['imagetyp'] = 'Bias Frame'
-    filters['instrume'] = ref_image.header['instrume']
-    filters['naxis']    = ref_image.header['naxis']
-    filters['naxis1']   = ref_image.header['naxis1']
-    filters['naxis2']   = ref_image.header['naxis2']
-    filters['xbinning'] = ref_image.header['xbinning']
-    filters['ybinning'] = ref_image.header['ybinning']
+    filters['instrume'] = image.header['instrume']
+    filters['naxis']    = image.header['naxis']
+    filters['naxis1']   = image.header['naxis1']
+    filters['naxis2']   = image.header['naxis2']
+    filters['xbinning'] = image.header['xbinning']
+    filters['ybinning'] = image.header['ybinning']
     filters['master']   = True
 
-    ifc_biases = ifc_biases.filter(**filters)
+
+    ifc_biases = __library_ifc.filter(**filters)
 
     num_biases = 0
     if ifc_biases.summary != None:
@@ -71,7 +75,7 @@ def select_bias(ifc_biases, ref_image):
     
     if num_biases > 0:
         # choose the first within temp range
-        ref_temp = float(ref_image.header['ccd-temp'])
+        ref_temp = float(image.header['ccd-temp'])
         
         for bias, bias_filename in ifc_biases.ccds(return_fname=True):
             bias_temp = float(bias.header['ccd-temp'])
@@ -85,9 +89,9 @@ def select_bias(ifc_biases, ref_image):
 
 
 
-def select_dark(ifc_darks, ref_image, ignore_temp=False):
+def select_dark(image, ignore_temp=False):
     """
-    Select a dark frame from ifc_darks that matches the parameters of the input reference image. 
+    Select a dark frame from the library that matches the parameters of the input reference image. 
     
     Keywords requiring equal values matched are:
         'instrume' - Instrument name
@@ -121,15 +125,15 @@ def select_dark(ifc_darks, ref_image, ignore_temp=False):
     
     filters = {}
     filters['imagetyp'] = 'Dark Frame'
-    filters['instrume'] = ref_image.header['instrume']
-    filters['naxis']    = ref_image.header['naxis']
-    filters['naxis1']   = ref_image.header['naxis1']
-    filters['naxis2']   = ref_image.header['naxis2']
-    filters['xbinning'] = ref_image.header['xbinning']
-    filters['ybinning'] = ref_image.header['ybinning']
+    filters['instrume'] = image.header['instrume']
+    filters['naxis']    = image.header['naxis']
+    filters['naxis1']   = image.header['naxis1']
+    filters['naxis2']   = image.header['naxis2']
+    filters['xbinning'] = image.header['xbinning']
+    filters['ybinning'] = image.header['ybinning']
     filters['master']   = True
     
-    ifc_darks = ifc_darks.filter(**filters)
+    ifc_darks = __library_ifc.filter(**filters)
 
     num_darks = 0
     if ifc_darks.summary != None:
@@ -137,7 +141,7 @@ def select_dark(ifc_darks, ref_image, ignore_temp=False):
 
     if num_darks > 0:
         # choose the first within temp range
-        ref_temp = float(ref_image.header['ccd-temp'])
+        ref_temp = float(image.header['ccd-temp'])
         
         for dark, dark_filename in ifc_darks.ccds(return_fname=True):
             if ignore_temp:
@@ -153,9 +157,9 @@ def select_dark(ifc_darks, ref_image, ignore_temp=False):
     raise Exception('No darks found matching light')
 
 
-def select_flat(ifc_flats, ref_image):
+def select_flat(image, ifc_flats=None):
     """
-    Select a flat frame from flats_dir() that matches the parameters of the input light frame. 
+    Select a flat frame from the ifc that matches the parameters of the input light frame. 
     
     Keywords requiring equal values matched are:
         'instrume' - Instrument name
@@ -185,17 +189,20 @@ def select_flat(ifc_flats, ref_image):
     filename : str
         Filename of the returned flat.
 
-    """        
+    """
+
+    if ifc_flats == None:
+        ifc_flats = __library_ifc
 
     filters = {}
     filters['imagetyp'] = 'Flat Field'
-    filters['instrume'] = ref_image.header['instrume']
-    filters['naxis']    = ref_image.header['naxis']
-    filters['naxis1']   = ref_image.header['naxis1']
-    filters['naxis2']   = ref_image.header['naxis2']
-    filters['xbinning'] = ref_image.header['xbinning']
-    filters['ybinning'] = ref_image.header['ybinning']
-    filters['filter']   = ref_image.header['filter']
+    filters['instrume'] = image.header['instrume']
+    filters['naxis']    = image.header['naxis']
+    filters['naxis1']   = image.header['naxis1']
+    filters['naxis2']   = image.header['naxis2']
+    filters['xbinning'] = image.header['xbinning']
+    filters['ybinning'] = image.header['ybinning']
+    filters['filter']   = image.header['filter']
     filters['master']   = True
     
     ifc_flats = ifc_flats.filter(**filters)
