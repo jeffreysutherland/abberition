@@ -28,7 +28,7 @@ def get_first_available_filename(path, pad_length: int=3, always_number: bool=Tr
 
     '''
     from os.path import exists, is_dir
-
+    raise NotImplementedError
     orig_path = path
     path = Path(path)
 
