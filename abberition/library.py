@@ -6,30 +6,39 @@ Images are selected through filters, so filenames are
 
 from ccdproc import CCDData, ImageFileCollection
 from pathlib import Path
+from os.path import exists
 
 __library_path = Path(__file__ + '../library')
 __library_ifc = ImageFileCollection(__library_path)
 
-temp_threshold = 0.25
-
-def __generate_filename(image):
+def __generate_filename(image:CCDData):
     '''
     Generate filename for image based on header values. Using binning instead resolution 
-    for filename as it's assumed it's using the entire sensor.
+    for filename as it's assumed it's using the entire sensor. This relies on the library
+    directory for unique filenames.
     '''
 
     instrument = image.header['instrume']
     binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
     imagetype = image.header['imagetyp']
+    exp_time = image.header['exptime']
     
     if imagetype == 'Bias Frame' or imagetype == 'Bias':
         filename = 'bias.' + instrument + '.' + binning + '.fits'
     elif imagetype == 'Dark Frame' or imagetype == 'Dark':
         temp = str(image.header['ccd-temp'])
-        filename = 'dark.' + instrument + '.' + binning + '.' + temp + 'C.fits'
+        filename = 'dark.' + instrument + '.' + binning + '.' + temp + 'C.' + exp_time + 's' + '.###.fits'
     elif imagetype == 'Flat Field' or imagetype == 'Flat':
         filename = 'flat.' + instrument + '.' + binning + '.' + image.header['filter'] + '.fits'
-         
+
+    base_filename = str(__library_path / filename)
+    file_num = 0
+    filename = base_filename.replace('###', f'{file_num:03d}')
+
+    while exists(filename):
+        file_num += 1
+        filename = base_filename.replace('###', f'{file_num:03d}')
+        
     return filename
 
 
@@ -37,7 +46,7 @@ def save_bias(image: CCDData):
     # check if image is already in library based on header values    
     existing_bias = select_bias(image)
         
-    filename = 
+    filename = __generate_filename(image)
     image.write(__library_path / 'bias')
     
     # if not, add to library
@@ -48,7 +57,7 @@ def save_dark():
 def save_flat():
     raise NotImplementedError
 
-def select_bias(image):
+def select_bias(image, ignore_temp=True, temp_threshold = 0.25):
     """
     Select a bias frame from the library that matches the parameters of the input ref image. 
     TODO: enable cropped images by splitting out the naxis1, naxis2 and adding xorgsubf and yorgsubf.
@@ -117,7 +126,7 @@ def select_bias(image):
 
 
 
-def select_dark(image, ignore_temp=False):
+def select_dark(image, ignore_temp=False, temp_threshold = 0.25):
     """
     Select a dark frame from the library that matches the parameters of the input reference image. 
     
