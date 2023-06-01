@@ -2,23 +2,32 @@
 
 from pathlib import Path
 
+def get_first_available_dirname(path,  pad_length: int=3, always_number: bool=True):
+    raise NotImplementedError
 
 def get_first_available_filename(path, pad_length: int=3, always_number: bool=True):
     '''
-    Returns the first available filename in the form {path}.#, where # is the 
-    first available number.
+    Returns the first available filename given a set of parameters.
 
+    Examples:
+    get_first_available_filename('file.ext', 3, always_number)
+
+    always_number          File exists          File doesn't exist
+    True                   'file.000.ext'       'file.000.ext'
+    False                  'file.000.ext'       'file.ext'
+    
+    
     Parameters
     ----------
     path : str
         Path of the file to check. 
-        if file, extension will follow number
-        if dir, number will be at end
 
     pad_length : int
         Zero-padded length of the number
 
     always_number : bool
+        If true, will return a numbered filename even if path doesn't exist.
+        If false, will return path if it doesn't exist, otherwise first available numbered filename
 
 
     Returns
@@ -27,24 +36,23 @@ def get_first_available_filename(path, pad_length: int=3, always_number: bool=Tr
         The first available filename.
 
     '''
-    from os.path import exists, is_dir
-    raise NotImplementedError
-    orig_path = path
+    from os.path import exists
+
     path = Path(path)
+    ext = path.suffix()
+    path_base = path.root
 
-    # check if path is a directory or a file
-    if exists(path) or always_number:
-
+    new_path = path
+    
+    # rename dir if it exists
+    if exists(str(path)) or always_number:
+        path_str = str(path)
         i = 0
 
-
-        while True:
-            test_path = Path()
-            test_path = path_str + '.'
-            if exists(path_str + '.' + str(i)):
-                path = 
+        while exists(path_str + '.' + str(i)):
             i += 1
-        
+            
+        new_path = path_str + '.' + str(i)
 
     else:
         path_str = str(path)
