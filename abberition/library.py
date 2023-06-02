@@ -8,6 +8,8 @@ from ccdproc import CCDData, ImageFileCollection
 from pathlib import Path
 from os.path import exists
 
+from abberition.core import io
+
 __library_path = Path(__file__ + '../library')
 __library_ifc = ImageFileCollection(__library_path)
 
@@ -31,25 +33,17 @@ def __generate_filename(image:CCDData):
     elif imagetype == 'Flat Field' or imagetype == 'Flat':
         filename = 'flat.' + instrument + '.' + binning + '.' + image.header['filter'] + '.fits'
 
-    base_filename = str(__library_path / filename)
-    file_num = 0
-    filename = base_filename.replace('###', f'{file_num:03d}')
+    filepath = __library_path / io.get_first_available_filename(filename)
+    filename = io.get_first_available_filename(filepath)
 
-    while exists(filename):
-        file_num += 1
-        filename = base_filename.replace('###', f'{file_num:03d}')
-        
     return filename
 
 
 def save_bias(image: CCDData):
-    # check if image is already in library based on header values    
-    existing_bias = select_bias(image)
-        
-    filename = __generate_filename(image)
-    image.write(__library_path / 'bias')
+    filepath = __generate_filename(image)
     
-    # if not, add to library
+    # TODO: hash data and save in keyword
+    
 
 def save_dark():
     raise NotImplementedError
