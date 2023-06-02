@@ -1,9 +1,62 @@
 # -*- coding: utf-8 -*-
 
+from os import makedirs, rename
+from os.path import exists
 from pathlib import Path
 
 def get_first_available_dirname(path,  pad_length: int=3, always_number: bool=True):
-    raise NotImplementedError
+    '''
+    Returns the first available directory name given a set of parameters.
+
+    Examples:
+    get_first_available_dirname('dir', 3, always_number)
+
+    always_number          Dir exists      Dir doesn't exist
+    True                   'dir.000'       'dir.000'
+    False                  'dir.000'       'dir'
+    
+    
+    Parameters
+    ----------
+    path : str
+        Path of the directory to check. 
+
+    pad_length : int
+        Zero-padded length of the number
+
+    always_number : bool
+        If true, will return a numbered directory name even if path doesn't exist.
+        If false, will return path if it doesn't exist, otherwise first available numbered directory name
+
+
+    Returns
+    -------
+    str
+        The first available directory name.
+
+    '''
+
+    path = Path(path)
+    ext = path.suffix
+    path_base = str(path.parent / path.stem)
+
+    new_path = str(path)
+
+    if exists(new_path) or always_number:
+        i = 0
+
+        while i < (10**pad_length):
+            new_path = f'{path_base}.{str(i).zfill(pad_length)}.{ext}'
+            if not exists(new_path):
+                break
+
+            i += 1
+
+            if i > 10 ** pad_length:
+                raise FileExistsError(f'All directories of numbered length {pad_length} have been taken for dir {str(path)}')
+        
+    return new_path
+
 
 def get_first_available_filename(path, pad_length: int=3, always_number: bool=True):
     '''
@@ -36,31 +89,28 @@ def get_first_available_filename(path, pad_length: int=3, always_number: bool=Tr
         The first available filename.
 
     '''
-    from os.path import exists
-
     path = Path(path)
-    ext = path.suffix()
-    path_base = path.root
+    ext = path.suffix
+    path_base = str(path.parent / path.stem)
 
-    new_path = path
-    
-    # rename dir if it exists
-    if exists(str(path)) or always_number:
-        path_str = str(path)
+    new_path = str(path)
+
+    if exists(new_path) or always_number:
         i = 0
 
-        while exists(path_str + '.' + str(i)):
+        while i < (10**pad_length):
+            new_path = f'{path_base}.{str(i).zfill(pad_length)}.{ext}'
+            if not exists(new_path):
+                break
+
             i += 1
-            
-        new_path = path_str + '.' + str(i)
 
-    else:
-        path_str = str(path)
+            if i > 10 ** pad_length:
+                raise FileExistsError(f'All files of numbered length {pad_length} have been taken for file {str(path)}')
         
-    return path_str + '.' + str(i)
+    return new_path
 
-
-def mkdirs_backup_existing(path):
+def mkdirs_backup_existing(path, pad_length:int=3):
     '''
     Same as makedirs, but if the path already exists, the existing one will be 
     renamed as {path}.#, where # is the first available number.
@@ -70,35 +120,32 @@ def mkdirs_backup_existing(path):
     path : str
         Path of the directory to create.
 
+    pad_length : int
+        Zero-padded length
+    
+    pad_length
+
     Returns
     -------
-    None.
+    If directory was backed up, returns path to backup directory, else None.
 
     '''
+    bk_path = None
 
-    from os.path import exists
-    from os import rename, makedirs
+    if (exists(path)):
+        bk_path = get_first_available_dirname(path, pad_length, True)
+        rename(path, bk_path)    
 
-    # rename dir if it exists
-    if exists(str(path)):
-        path_str = str(path)
-        i = 0
-        while exists(path_str + '.' + str(i)):
-            i += 1
-            
-        new_path = path_str + '.' + str(i)
-        rename(path_str, new_path)
-    
     # create primary output dir
     makedirs(name=str(path), exist_ok=False)
+
+    return bk_path
 
 def mkdirs_rm_existing(path):
     '''
     Same as makedirs, but if the path already exists, the existing one will be
     deleted and recreated.
     '''
-    from os.path import exists
-    from os import makedirs
     from shutil import rmtree
 
     # rename dir if it exists
