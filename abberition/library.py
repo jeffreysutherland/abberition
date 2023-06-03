@@ -8,9 +8,9 @@ from ccdproc import CCDData, ImageFileCollection
 from pathlib import Path
 from os.path import exists
 
-from abberition.core import io
+from abberition import io
 
-__library_path = Path(__file__ + '../library')
+__library_path = Path(__file__).parent / 'library/'
 __library_ifc = ImageFileCollection(__library_path)
 
 def __generate_filename(image:CCDData):

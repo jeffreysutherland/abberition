@@ -6,16 +6,13 @@ import logging
 import numpy as np 
 import os
 from pathlib import Path
-import abberition.core.io as io
+import abberition.io as io
 
 
-def create_bias(biases: ImageFileCollection, out_file: Path, sigma_low=5.0, sigma_high=5.0, data_type=np.float32, overwrite=True):
-    # ensuring output directory exists
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-
+def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32, out_file:Path=None, overwrite=True):
     # get list of files
     bias_files = biases.files_filtered(include_path=True)
-    logging.debug(f'Combining {len(bias_files)} files to use for bias.')
+    logging.info(f'Combining {len(bias_files)} files to use for bias.')
 
 
     combined_bias = ccdp.combine(biases,
@@ -31,8 +28,15 @@ def create_bias(biases: ImageFileCollection, out_file: Path, sigma_low=5.0, sigm
         
     combined_bias.meta['combined'] = True
 
-    print(f'Finished combining, saving to {out_file}')
-    combined_bias.write(out_file, overwrite=overwrite)
+
+    logging.info(f'Finished combining biases')
+    if out_file:
+        logging.info('Saving Bias to {out_file}')
+
+        # ensuring output directory exists
+        out_file.parent.mkdir(parents=True, exist_ok=True)
+
+        combined_bias.write(out_file, overwrite=overwrite)
 
     return combined_bias
 
@@ -97,14 +101,14 @@ def create_flats(ifc_biases, ifc_darks, ifc_flats, output_dir, min_exp=2.0, del_
     import numpy as np
     from astropy import units as u
     from astropy.io import fits
-    import abberition.core.io as proc
+    import abberition.io
     
     print('Creating master flats')
     
     # create output and calibrated dirs
     out_path = Path(output_dir)
     
-    proc.mkdirs_backup_existing(str(out_path))
+    abberition.io.mkdirs_backup_existing(str(out_path))
     
     # pre-filter flat collection for flats only
     ifc_flats = ifc_flats.filter(imagetyp='Flat Field')
