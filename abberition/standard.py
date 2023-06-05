@@ -6,7 +6,7 @@ import logging
 import numpy as np 
 import os
 from pathlib import Path
-import abberition.io as io
+import abberition
 
 
 def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32, out_file:Path=None, overwrite=True):
@@ -14,8 +14,7 @@ def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data
     bias_files = biases.files_filtered(include_path=True)
     logging.info(f'Combining {len(bias_files)} files to use for bias.')
 
-
-    combined_bias = ccdp.combine(biases,
+    combined_bias = ccdp.combine(bias_files,
         unit='adu',
         method='average',
         sigma_clip=True,      
@@ -26,10 +25,10 @@ def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data
         mem_limit=2e9,
         dtype=data_type)
         
-    combined_bias.meta['combined'] = True
-
+    combined_bias.meta['standard'] = True
 
     logging.info(f'Finished combining biases')
+
     if out_file:
         logging.info('Saving Bias to {out_file}')
 
@@ -58,7 +57,7 @@ def create_dark(darks: ImageFileCollection, biases: ImageFileCollection, out_fil
         tmp_file = str(working_path / file_name)
 
         # Subtract bias and save
-        bias = io.select_bias(biases, ccd)
+        bias = abberition.library.select_bias(biases, ccd)
         ccd = ccdp.subtract_bias(ccd, bias)
         ccd.write(tmp_file, overwrite=True)
 
@@ -100,7 +99,7 @@ def create_flats(ifc_biases, ifc_darks, ifc_flats, output_dir, min_exp=2.0, del_
     import ccdproc as ccdp
     import numpy as np
     from astropy import units as u
-    from astropy.io import fits
+    #from astropy.io import fits
     import abberition.io
     
     print('Creating master flats')
@@ -147,8 +146,8 @@ def create_flats(ifc_biases, ifc_darks, ifc_flats, output_dir, min_exp=2.0, del_
             elif flat.header['exptime'] < min_exp:
                 print('    Rejected', filename, 'as exposure is too short (', flat.header['exptime'],'< 2.0s)')
             else:
-                master_bias, master_bias_filename = proc.select_bias(ifc_biases, flat)
-                master_dark, master_bias_filename = proc.select_dark(ifc_darks, flat)
+                master_bias, master_bias_filename = abberition.library.select_bias(ifc_biases, flat)
+                master_dark, master_bias_filename = abberition.library.select_dark(ifc_darks, flat)
                 calibrated_flat = ccdp.subtract_bias(flat, master_bias, add_keyword=None)
                 calibrated_flat = ccdp.subtract_dark(calibrated_flat, master_dark, exposure_time='exptime', exposure_unit=u.second, scale=True, add_keyword=None)
                 calibrated_flat.meta['reduced'] = True
@@ -171,13 +170,13 @@ def create_flats(ifc_biases, ifc_darks, ifc_flats, output_dir, min_exp=2.0, del_
             return 1 / np.median(a)
     
         combined_flat = ccdp.combine(to_combine,
-                                     method='median', scale=inv_median,
+                                     method='median', 
+                                     scale=inv_median,
                                      sigma_clip=False,
                                      mem_limit=2e9,
-                                    add_keyword=None)
+                                     add_keyword=None)
         
-        combined_flat.meta['master'] = True
-        flat_filename = 'master_flat_{0}_{1}_{2}x{3}.fit'.format(instrument.translate(instrument.maketrans({' ':'', ':':'', '/':'', '\\':'', '\'':'', '"':''})).lower(), filt, xbin, ybin)
+        combined_flat.meta['standard'] = True
 
         flat_path = out_path / flat_filename
         

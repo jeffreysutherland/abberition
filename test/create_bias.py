@@ -1,10 +1,9 @@
 #%%
 # create bias standard and save to library
 import logging
-import test_setup
+logging.basicConfig(level=logging.INFO)
 
-# %reload_ext autoreload
-#%autoreload 2
+import test_setup
 
 import abberition
 from importlib import reload
@@ -27,13 +26,13 @@ for bias_set in bias_sets:
     bias_src_path = astronomy_data_path / 'data/calibration/pixis_2048b' / bias_set
     logging.info(f'Creating bias from \'{bias_src_path}\'')
 
-    # load bias images from dir
-
+    # load bias images from directory
     biases = ImageFileCollection(bias_src_path)
 
     bias_image = standard.create_bias(biases)
 
     library.save_bias(bias_image)
 
+logging.info('Finished creating bias frames.')
 
 # %%

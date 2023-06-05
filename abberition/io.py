@@ -97,7 +97,7 @@ def get_first_available_filename(path, pad_length: int=3, always_number: bool=Tr
         i = 0
 
         while i < (10**pad_length):
-            new_path = f'{path_base}.{str(i).zfill(pad_length)}.{ext}'
+            new_path = f'{path_base}.{str(i).zfill(pad_length)}{ext}'
             if not exists(new_path):
                 break
 

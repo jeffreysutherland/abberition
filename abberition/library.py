@@ -4,6 +4,7 @@ Create a library of reference frames (bias, dark, flat), that can be requested b
 Images are selected through filters, so filenames are 
 '''
 
+import logging
 from ccdproc import CCDData, ImageFileCollection
 from pathlib import Path
 from os.path import exists
@@ -20,7 +21,7 @@ def __generate_filename(image:CCDData):
     directory for unique filenames.
     '''
 
-    instrument = image.header['instrume']
+    instrument = image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', '')
     binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
     imagetype = image.header['imagetyp']
     exp_time = image.header['exptime']
@@ -29,11 +30,11 @@ def __generate_filename(image:CCDData):
         filename = 'bias.' + instrument + '.' + binning + '.fits'
     elif imagetype == 'Dark Frame' or imagetype == 'Dark':
         temp = str(image.header['ccd-temp'])
-        filename = 'dark.' + instrument + '.' + binning + '.' + temp + 'C.' + exp_time + 's' + '.###.fits'
+        filename = 'dark.' + instrument + '.' + binning + '.' + temp + 'C.' + exp_time + 's' + '.fits'
     elif imagetype == 'Flat Field' or imagetype == 'Flat':
         filename = 'flat.' + instrument + '.' + binning + '.' + image.header['filter'] + '.fits'
 
-    filepath = __library_path / io.get_first_available_filename(filename)
+    filepath = __library_path / filename
     filename = io.get_first_available_filename(filepath)
 
     return filename
@@ -43,10 +44,22 @@ def save_bias(image: CCDData):
     filepath = __generate_filename(image)
     
     # TODO: hash data and save in keyword
+    logging.info('Saving bias to library file ' + str(filepath))
+
+    image.write(filepath, overwrite=False)
+    
+    return filepath
     
 
-def save_dark():
-    raise NotImplementedError
+def save_dark(image: CCDData):
+    filepath = __generate_filename(image)
+    
+    # TODO: hash data and save in keyword
+    logging.info('Saving dark to library file ' + str(filepath))
+
+    image.write(filepath, overwrite=False)
+    
+    return filepath
 
 def save_flat():
     raise NotImplementedError
@@ -95,7 +108,9 @@ def select_bias(image, ignore_temp=True, temp_threshold = 0.25):
     filters['naxis2']   = image.header['naxis2']
     filters['xbinning'] = image.header['xbinning']
     filters['ybinning'] = image.header['ybinning']
-    filters['master']   = True
+    filters['readoutm']  = image.header['readoutm']
+    filters['gain']  = image.header['gain']
+    filters['standard']   = True
 
 
     ifc_biases = __library_ifc.filter(**filters)
