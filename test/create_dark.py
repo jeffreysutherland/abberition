@@ -1,6 +1,6 @@
 # %%
 #%%
-# create bias standard and save to library
+# create dark standard and save to library
 import logging
 logging.basicConfig(level=logging.INFO)
 

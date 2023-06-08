@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import logging
 from os import makedirs, rename
 from os.path import exists
 from pathlib import Path
+from ccdproc import CCDData
 
 def get_first_available_dirname(path,  pad_length: int=3, always_number: bool=True):
     '''
@@ -152,3 +154,25 @@ def mkdirs_rm_existing(path):
     
     # create primary output dir
     makedirs(name=str(path), exist_ok=False)
+
+def save_image(image:CCDData, path:Path, overwrite:bool=True):
+    '''
+    Save image to file. If file exists, it will be backed up and overwritten.
+
+    Parameters
+    ----------
+    image : CCDData
+        Image to save.
+
+    path : Path
+        Path to save image to.
+
+    '''
+    path = Path(path)
+
+    logging.info('Saving Bias to {out_file}')
+
+    # ensure output directory exists
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    image.write(path, overwrite=overwrite)

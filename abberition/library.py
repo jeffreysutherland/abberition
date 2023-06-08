@@ -24,6 +24,8 @@ def __generate_filename(image:CCDData):
     instrument = image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', '')
     binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
     imagetype = image.header['imagetyp']
+    quality = image.header['quality']
+    gain = image.header['gain']
     exp_time = image.header['exptime']
     
     if imagetype == 'Bias Frame' or imagetype == 'Bias':
@@ -77,10 +79,11 @@ def select_bias(image, ignore_temp=True, temp_threshold = 0.25):
         'bitpix' - Bits per pixel
         'xbinning' - X binning value
         'ybinning' - Y binning value
-
+        'readoutm' - Readout mode
+        'gain' - Gain
 
     Other keywords checked:
-        'master' - Checked to ensure bias is marked as a master frame
+        'standard' - Checked to ensure bias is marked as a master frame
         'ccd-temp' - Checked to ensure bias is within temp_threshold of light
 
     Parameters

@@ -1,4 +1,5 @@
 # Create standard frames (bias, dark, flat) from a set of images
+import tempfile
 from astropy.stats import mad_std
 import ccdproc as ccdp
 from ccdproc import ImageFileCollection
@@ -7,9 +8,10 @@ import numpy as np
 import os
 from pathlib import Path
 import abberition
+from abberition import library
 
 
-def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32, out_file:Path=None, overwrite=True):
+def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32):
     # get list of files
     bias_files = biases.files_filtered(include_path=True)
     logging.info(f'Combining {len(bias_files)} files to use for bias.')
@@ -29,40 +31,61 @@ def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data
 
     logging.info(f'Finished combining biases')
 
-    if out_file:
-        logging.info('Saving Bias to {out_file}')
-
-        # ensuring output directory exists
-        out_file.parent.mkdir(parents=True, exist_ok=True)
-
-        combined_bias.write(out_file, overwrite=overwrite)
 
     return combined_bias
 
+def is_bias_dark_match(bias, dark):
+    '''
+    Checks if a bias and dark are a match based on relevant properties.
+    '''
+    filters = {}
+    filters['imagetyp'] = 'Bias Frame'
+    filters['instrume'] = image.header['instrume']
+    filters['naxis']    = image.header['naxis']
+    filters['naxis1']   = image.header['naxis1']
+    filters['naxis2']   = image.header['naxis2']
+    filters['xbinning'] = image.header['xbinning']
+    filters['ybinning'] = image.header['ybinning']
+    filters['readoutm']  = image.header['readoutm']
+    filters['gain']  = image.header['gain']
+    filters['standard']   = True
 
-def create_dark(darks: ImageFileCollection, biases: ImageFileCollection, out_file: Path, sigma_low, sigma_high, data_type=np.float32, overwrite=True):
-    out_file.parent.mkdir(parents=True, exist_ok=True)
+
+    return  bias.header['imagetyp'] == 'Bias Frame' and \
+            dark.header['imagetyp'] == 'Dark Frame' and \
+            bias.header['instrume'] == dark.header['instrume'] and \
+            bias.header['naxis'] == dark.header['naxis'] and \
+            bias.header['naxis1'] == dark.header['naxis1'] and \
+            bias.header['naxis2'] == dark.header['naxis2'] and \
+            bias.header['xbinning'] == dark.header['xbinning'] and \
+            bias.header['ybinning'] == dark.header['ybinning'] and \
+            bias.header['ccd-temp'] == dark.header['ccd-temp'] and \
+            bias.header['gain'] == dark.header['gain'] and \
+            bias.header['readoutm'] == dark.header['readoutm']
+
+
+
+def create_dark(darks: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32, overwrite=True):
 
     # create working dir as output file name + '_working'
-    working_path = Path(str(out_file.absolute()) + '_working')
+    working_path = Path(tempfile.TemporaryDirectory())
     working_path.mkdir(parents=True, exist_ok=True)
 
     calibrated_dark_files = []
 
-
     # TODO: ensure all darks have the same property values
+    # TODO: If darks have different property values, output a 
 
     # for each dark, subtract bias
-    for ccd, file_name in darks.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
-        tmp_file = str(working_path / file_name)
-
+    for dark, dark_fn in darks.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
         # Subtract bias and save
-        bias = abberition.library.select_bias(biases, ccd)
-        ccd = ccdp.subtract_bias(ccd, bias)
-        ccd.write(tmp_file, overwrite=True)
+        dark_temp_fn = str(working_path / dark_fn)
+        bias = library.select_bias(dark)
+        dark_calibrated = ccdp.subtract_bias(dark, bias)
+        dark_calibrated.write(dark_temp_fn, overwrite=True)
 
         # add to list of files
-        calibrated_dark_files.append(tmp_file)
+        calibrated_dark_files.append(dark_temp_fn)
 
     logging.debug(f'Combining {len(calibrated_dark_files)} to use for dark.')
     # combine calibrated darks for dark standard
