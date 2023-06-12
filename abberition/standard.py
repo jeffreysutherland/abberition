@@ -66,15 +66,15 @@ def is_bias_dark_match(bias, dark):
 
 
 def create_dark(darks: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32, overwrite=True):
+    temp_dir = tempfile.mkdtemp()
 
-    # create working dir as output file name + '_working'
-    working_path = Path(tempfile.TemporaryDirectory())
+    working_path = Path(temp_dir)
     working_path.mkdir(parents=True, exist_ok=True)
 
     calibrated_dark_files = []
 
     # TODO: ensure all darks have the same property values
-    # TODO: If darks have different property values, output a 
+    # TODO: If darks have different property values, output a collection of darks
 
     # for each dark, subtract bias
     for dark, dark_fn in darks.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
@@ -109,9 +109,7 @@ def create_dark(darks: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_
     for f in calibrated_dark_files:
         os.remove(f)
 
-    # if working dir empty, delete it.
-    if len(os.listdir(working_path)) == 0:
-        os.removedirs(working_path)
+    tempfile.rmtree(temp_dir)
 
     return combined_dark
 
