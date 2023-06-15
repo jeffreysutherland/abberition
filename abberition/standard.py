@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import abberition
 from abberition import library
+from abberition import calibration
 
 
 def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32):
@@ -79,9 +80,9 @@ def create_dark(darks: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_
     # for each dark, subtract bias
     for dark, dark_fn in darks.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
         # Subtract bias and save
+        dark_calibrated = calibration.bias_subtract(dark)
+
         dark_temp_fn = str(working_path / dark_fn)
-        bias = library.select_bias(dark)
-        dark_calibrated = ccdp.subtract_bias(dark, bias)
         dark_calibrated.write(dark_temp_fn, overwrite=True)
 
         # add to list of files

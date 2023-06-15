@@ -119,7 +119,7 @@ def select_bias(image, ignore_temp=True, temp_threshold = 0.25):
     ifc_biases = __library_ifc.filter(**filters)
 
     num_biases = 0
-    if ifc_biases.summary != None:
+    if ifc_biases.summary:
         num_biases = len(ifc_biases.summary)
     
     if num_biases > 0:

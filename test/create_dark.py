@@ -1,4 +1,3 @@
-# %%
 #%%
 # create dark standard and save to library
 import logging
