@@ -1,7 +1,6 @@
 #%%
 # create bias standard and save to library
 import logging
-from abberition import io
 logging.basicConfig(level=logging.INFO)
 
 import test_setup
@@ -11,9 +10,8 @@ from importlib import reload
 reload(abberition)
 
 from pathlib import Path
-from abberition import library
-from abberition import standard
-from ccdproc import CCDData, ImageFileCollection
+from abberition import io, library, standard
+from ccdproc import ImageFileCollection
 
 astronomy_data_dir = '../../astrodev/astronomy.data/'
 astronomy_data_path = Path(astronomy_data_dir)
@@ -32,9 +30,13 @@ for bias_set in bias_sets:
 
     bias_image = standard.create_bias(biases)
 
-    library.save_bias(bias_image)
+    bias_path = library.save_bias(bias_image)
+    bias_path = Path(bias_path)
 
-    io.save_mono_jpg(bias_image, f'../.output/standard/{bias_set}.jpg')
+    jpg_path = Path(f'../.output/standard/{bias_path.name}.jpg')
+    jpg_path.parent.mkdir(parents=True, exist_ok=True)
+
+    io.save_mono_jpg(bias_image, jpg_path)
 
 logging.info('Finished creating bias frames.')
 

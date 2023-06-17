@@ -14,6 +14,65 @@ from abberition import io
 __library_path = Path(__file__).parent / 'library/'
 __library_ifc = ImageFileCollection(__library_path)
 
+def __get_quality(header):
+    '''
+    Get the ADC quality based on the header values.
+    Possible values are:
+        'em' - Electron multiplication
+        'hc' - High capacity
+        'hs' - High speed
+        'ln' - Low noise
+    '''
+    quality = header['quality'].lower()
+
+    if quality == 'unknown':
+        cds = header['cds'].lower()
+        if cds == 'fastest & most sensitive':
+            quality = 'hs'
+        elif cds == 'best quality':
+            quality = 'ln'
+    elif quality == 'high capacity':
+        quality = 'hc'
+    elif quality == 'high speed':
+        quality = 'hs'
+    elif quality == 'low noise':
+        quality = 'ln'
+
+    return quality
+
+
+def __get_gain(header):
+    '''
+    Get the gain of the image based on the header values.
+
+    Possible values are:
+        'h' - High gain
+        'm' - Medium gain
+        'l' - Low gain
+    '''
+    gain = header['gain'].lower()
+
+    if gain == 'high':
+        gain = 'h'
+    elif gain == 'medium':
+        gain = 'm'
+    elif gain == 'low':
+        gain = 'l'
+    
+    return gain
+
+def __get_speed(header):
+    '''
+    Get the speed of the image based on the header values. Speed in MHz
+    '''
+    speed = 0.0
+    
+    if 'speed' in header:
+        speed = header['speed']
+
+    return speed
+
+
 def __generate_filename(image:CCDData):
     '''
     Generate filename for image based on header values. Using binning instead resolution 
@@ -21,22 +80,23 @@ def __generate_filename(image:CCDData):
     directory for unique filenames.
     '''
 
-    instrument = image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', '')
+    instrument = str(image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', ''))
+    temp = str(image.header['ccd-temp'])
     binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
-    imagetype = image.header['imagetyp']
-    exp_time = image.header['exptime']
-
-    #TODO: add quality and gain
-    quality = image.header['quality']
-    gain = image.header['gain']
+    imagetype = str(image.header['imagetyp'])
+    exp_time = str(image.header['exptime'])
+    quality = __get_quality(image.header)
+    gain = __get_gain(image.header)
+    speed = __get_speed(image.header)
 
     if imagetype == 'Bias Frame' or imagetype == 'Bias':
-        filename = 'bias.' + instrument + '.' + binning + '.fits'
+        filename = f'bias.{instrument}.b{binning}.{temp}C.q{quality}.g{gain}.s{speed}.fits'
+
     elif imagetype == 'Dark Frame' or imagetype == 'Dark':
-        temp = str(image.header['ccd-temp'])
-        filename = f'dark.{instrument}.{binning}.{temp}C.{exp_time}s.fits'
+        filename = f'dark.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
+
     elif imagetype == 'Flat Field' or imagetype == 'Flat':
-        filename = 'flat.' + instrument + '.' + binning + '.' + image.header['filter'] + '.fits'
+        filename = f'flat.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
 
     filepath = __library_path / filename
     filename = io.get_first_available_filename(filepath)

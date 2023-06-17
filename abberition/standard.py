@@ -88,6 +88,7 @@ def create_dark(darks: ImageFileCollection, sigma_low:float=5.0, sigma_high:floa
         calibrated_dark_files.append(dark_temp_fn)
 
     logging.debug(f'Combining {len(calibrated_dark_files)} to use for dark.')
+    print(calibrated_dark_files)
     # combine calibrated darks for dark standard
     combined_dark = ccdp.combine(calibrated_dark_files,
         unit='adu',
