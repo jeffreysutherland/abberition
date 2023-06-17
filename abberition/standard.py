@@ -1,4 +1,5 @@
 # Create standard frames (bias, dark, flat) from a set of images
+from shutil import rmtree
 import tempfile
 from astropy.stats import mad_std
 import ccdproc as ccdp
@@ -10,6 +11,7 @@ from pathlib import Path
 import abberition
 from abberition import library
 from abberition import calibration
+from abberition import conversion
 
 
 def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32):
@@ -37,20 +39,8 @@ def create_bias(biases: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data
 
 def is_bias_dark_match(bias, dark):
     '''
-    Checks if a bias and dark are a match based on relevant properties.
+    Returns true if the bias and dark are compatible based on relevant properties
     '''
-    filters = {}
-    filters['imagetyp'] = 'Bias Frame'
-    filters['instrume'] = image.header['instrume']
-    filters['naxis']    = image.header['naxis']
-    filters['naxis1']   = image.header['naxis1']
-    filters['naxis2']   = image.header['naxis2']
-    filters['xbinning'] = image.header['xbinning']
-    filters['ybinning'] = image.header['ybinning']
-    filters['readoutm']  = image.header['readoutm']
-    filters['gain']  = image.header['gain']
-    filters['standard']   = True
-
 
     return  bias.header['imagetyp'] == 'Bias Frame' and \
             dark.header['imagetyp'] == 'Dark Frame' and \
@@ -66,11 +56,15 @@ def is_bias_dark_match(bias, dark):
 
 
 
-def create_dark(darks: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_type=np.float32, overwrite=True):
-    temp_dir = tempfile.mkdtemp()
+def create_dark(darks: ImageFileCollection, sigma_low:float=5.0, sigma_high:float=5.0, data_type=np.float32, del_tmp_dir:bool=True):
+    '''
+    Calibrate and create a dark standard from a collection of darks.
+    '''
 
+    logging.debug(f'create_dark: sigma_low={sigma_low}, sigma_high={sigma_high}, data_type={data_type}, del_tmp_dir={del_tmp_dir}')
+
+    temp_dir = tempfile.mkdtemp()
     working_path = Path(temp_dir)
-    working_path.mkdir(parents=True, exist_ok=True)
 
     calibrated_dark_files = []
 
@@ -79,9 +73,14 @@ def create_dark(darks: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_
 
     # for each dark, subtract bias
     for dark, dark_fn in darks.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
-        # Subtract bias and save
-        dark_calibrated = calibration.bias_subtract(dark)
+        logging.debug(f'  calibrating dark: {dark_fn}')
 
+        dark_f32 = conversion.to_float32(dark)
+
+        # Subtract bias and save
+        dark_calibrated = calibration.bias_subtract(dark_f32)
+
+        logging.debug(f'  saving calibrated dark: {dark_fn}')
         dark_temp_fn = str(working_path / dark_fn)
         dark_calibrated.write(dark_temp_fn, overwrite=True)
 
@@ -103,14 +102,12 @@ def create_dark(darks: ImageFileCollection, sigma_low=5.0, sigma_high=5.0, data_
 
     combined_dark.meta['combined'] = True
 
-    combined_dark.write(out_file, overwrite=overwrite)
-
     # delete temp files
-    print('Deleting temp files')
+    logging.debug('Deleting temp files')
     for f in calibrated_dark_files:
         os.remove(f)
 
-    tempfile.rmtree(temp_dir)
+    rmtree(temp_dir)
 
     return combined_dark
 

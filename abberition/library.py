@@ -24,15 +24,17 @@ def __generate_filename(image:CCDData):
     instrument = image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', '')
     binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
     imagetype = image.header['imagetyp']
+    exp_time = image.header['exptime']
+
+    #TODO: add quality and gain
     quality = image.header['quality']
     gain = image.header['gain']
-    exp_time = image.header['exptime']
-    
+
     if imagetype == 'Bias Frame' or imagetype == 'Bias':
         filename = 'bias.' + instrument + '.' + binning + '.fits'
     elif imagetype == 'Dark Frame' or imagetype == 'Dark':
         temp = str(image.header['ccd-temp'])
-        filename = 'dark.' + instrument + '.' + binning + '.' + temp + 'C.' + exp_time + 's' + '.fits'
+        filename = f'dark.{instrument}.{binning}.{temp}C.{exp_time}s.fits'
     elif imagetype == 'Flat Field' or imagetype == 'Flat':
         filename = 'flat.' + instrument + '.' + binning + '.' + image.header['filter'] + '.fits'
 

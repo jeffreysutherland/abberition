@@ -12,7 +12,7 @@ def bias_subtract(image: ccdp.CCDData, bias: ccdp.CCDData=None):
     logging.info('Calibrating image with bias.')
 
     if bias is None:
-        bias = library.load_bias(image)
+        bias, _ = library.select_bias(image)
 
     image = ccdp.subtract_bias(image, bias)
 

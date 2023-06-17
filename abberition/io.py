@@ -176,3 +176,40 @@ def save_image(image:CCDData, path:Path, overwrite:bool=True):
     path.parent.mkdir(parents=True, exist_ok=True)
 
     image.write(path, overwrite=overwrite)
+
+def save_mono_jpg(image:CCDData, path:Path, overwrite:bool=True, softening_param:float=5.0, stretch:float=700.0):
+    save_rgb_jpg(image, image, image, path, overwrite, softening_param, stretch)
+
+
+def save_rgb_jpg(r:CCDData, g:CCDData, b:CCDData, path:Path, overwrite:bool=True, softening_param:float=5.0, stretch:float=700.0):
+    '''
+    Save image to file. If file exists, it will be backed up and overwritten.
+
+    Parameters
+    ----------
+    r : CCDData
+        Red channel of output image
+        
+    g : CCDData
+        Green channel of output image
+        
+    b : CCDData
+        Blue channel of output image
+        
+    path : Path
+        Path to save image to.
+
+    '''
+    
+    from astropy.visualization import make_lupton_rgb
+    import numpy as np
+
+    minimum = np.array([np.percentile(r, 1), np.percentile(g, 1), np.percentile(b, 1)])
+    maximum = np.array([np.percentile(r, 99.5), np.percentile(g, 99.5), np.percentile(b, 99.5)])
+
+    if (not overwrite) and (path.exists()):
+        path = get_first_available_filename(path, 3, True)
+
+    rgb = make_lupton_rgb(r, g, b, minimum=minimum, Q=softening_param, stretch = stretch, filename=path)
+
+    return path

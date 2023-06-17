@@ -1,6 +1,7 @@
 #%%
 # create bias standard and save to library
 import logging
+from abberition import io
 logging.basicConfig(level=logging.INFO)
 
 import test_setup
@@ -32,6 +33,8 @@ for bias_set in bias_sets:
     bias_image = standard.create_bias(biases)
 
     library.save_bias(bias_image)
+
+    io.save_mono_jpg(bias_image, f'../.output/standard/{bias_set}.jpg')
 
 logging.info('Finished creating bias frames.')
 
