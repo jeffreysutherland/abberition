@@ -113,13 +113,12 @@ def create_dark(darks: ImageFileCollection, sigma_low:float=5.0, sigma_high:floa
     return combined_dark
 
 
-def create_flats(ifc_biases, ifc_darks, ifc_flats, output_dir, min_exp=2.0, del_tmp=True, working_dir=None, del_intermediate_files=True, data_type=np.float32, overwrite=True):
+def create_flat(ifc_flats, output_dir, min_exp=2.0, del_tmp=True, working_dir=None, del_intermediate_files=True, data_type=np.float32, overwrite=True):
     from pathlib import Path
     from os import makedirs
     import ccdproc as ccdp
     import numpy as np
     from astropy import units as u
-    #from astropy.io import fits
     import abberition.io
     
     print('Creating master flats')

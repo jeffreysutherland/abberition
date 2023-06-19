@@ -6,6 +6,9 @@ from os.path import exists
 from pathlib import Path
 from ccdproc import CCDData
 
+from astropy.visualization.stretch import HistEqStretch
+
+
 def get_first_available_dirname(path,  pad_length: int=3, always_number: bool=True):
     '''
     Returns the first available directory name given a set of parameters.
@@ -206,7 +209,8 @@ def save_rgb_jpg(r:CCDData, g:CCDData, b:CCDData, path:Path, overwrite:bool=True
 
     minimum = np.array([np.percentile(r, 1), np.percentile(g, 1), np.percentile(b, 1)])
     maximum = np.array([np.percentile(r, 99.5), np.percentile(g, 99.5), np.percentile(b, 99.5)])
-
+    #TODO: implement histogram equalization
+    
     if (not overwrite) and (path.exists()):
         path = get_first_available_filename(path, 3, True)
 
