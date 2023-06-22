@@ -14,98 +14,13 @@ from abberition import io
 __library_path = Path(__file__).parent / 'library/'
 __library_ifc = ImageFileCollection(__library_path)
 
-def __get_quality(header):
-    '''
-    Get the ADC quality based on the header values.
-    Possible values are:
-        'em' - Electron multiplication
-        'hc' - High capacity
-        'hs' - High speed
-        'ln' - Low noise
-    '''
-    quality = header['quality'].lower()
-
-    if quality == 'unknown':
-        cds = header['cds'].lower()
-        if cds == 'fastest & most sensitive':
-            quality = 'hs'
-        elif cds == 'best quality':
-            quality = 'ln'
-    elif quality == 'high capacity':
-        quality = 'hc'
-    elif quality == 'high speed':
-        quality = 'hs'
-    elif quality == 'low noise':
-        quality = 'ln'
-
-    return quality
-
-
-def __get_gain(header):
-    '''
-    Get the gain of the image based on the header values.
-
-    Possible values are:
-        'h' - High gain
-        'm' - Medium gain
-        'l' - Low gain
-    '''
-    gain = header['gain'].lower()
-
-    if gain == 'high':
-        gain = 'h'
-    elif gain == 'medium':
-        gain = 'm'
-    elif gain == 'low':
-        gain = 'l'
-    
-    return gain
-
-def __get_speed(header):
-    '''
-    Get the speed of the image based on the header values. Speed in MHz
-    '''
-    speed = 0.0
-    
-    if 'speed' in header:
-        speed = header['speed']
-
-    return speed
-
-
-def __generate_filename(image:CCDData):
-    '''
-    Generate filename for image based on header values. Using binning instead resolution 
-    for filename as it's assumed it's using the entire sensor. This relies on the library
-    directory for unique filenames.
-    '''
-
-    instrument = str(image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', ''))
-    temp = str(image.header['ccd-temp'])
-    binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
-    imagetype = str(image.header['imagetyp'])
-    exp_time = str(image.header['exptime'])
-    quality = __get_quality(image.header)
-    gain = __get_gain(image.header)
-    speed = __get_speed(image.header)
-
-    if imagetype == 'Bias Frame' or imagetype == 'Bias':
-        filename = f'bias.{instrument}.b{binning}.{temp}C.q{quality}.g{gain}.s{speed}.fits'
-
-    elif imagetype == 'Dark Frame' or imagetype == 'Dark':
-        filename = f'dark.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
-
-    elif imagetype == 'Flat Field' or imagetype == 'Flat':
-        filename = f'flat.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
-
-    filepath = __library_path / filename
-    filename = io.get_first_available_filename(filepath)
-
-    return filename
-
+def get_library_path():
+    return __library_path
 
 def save_bias(image: CCDData):
-    filepath = __generate_filename(image)
+    filename = io.generate_filename(image)
+    filepath = __library_path / filename
+    filepath = Path(io.get_first_available_filename(filepath))
     
     # TODO: hash data and save in keyword
     logging.info('Saving bias to library file ' + str(filepath))
@@ -116,7 +31,9 @@ def save_bias(image: CCDData):
     
 
 def save_dark(image: CCDData):
-    filepath = __generate_filename(image)
+    filename = io.generate_filename(image)
+    filepath = __library_path / filename
+    filepath = Path(io.get_first_available_filename(filepath))
     
     # TODO: hash data and save in keyword
     logging.info('Saving dark to library file ' + str(filepath))
@@ -125,8 +42,9 @@ def save_dark(image: CCDData):
     
     return filepath
 
-def save_flat():
+def save_flat(image:CCDData):
     raise NotImplementedError
+
 
 def select_bias(image, ignore_temp=True, temp_threshold = 0.25):
     """
@@ -242,12 +160,13 @@ def select_dark(image, ignore_temp=False, temp_threshold = 0.25):
     filters['naxis2']   = image.header['naxis2']
     filters['xbinning'] = image.header['xbinning']
     filters['ybinning'] = image.header['ybinning']
-    filters['master']   = True
+    filters['readoutm']  = image.header['readoutm']
+    filters['gain']  = image.header['gain']
     
     ifc_darks = __library_ifc.filter(**filters)
 
     num_darks = 0
-    if ifc_darks.summary != None:
+    if ifc_darks.summary:
         num_darks = len(ifc_darks.summary)
 
     if num_darks > 0:

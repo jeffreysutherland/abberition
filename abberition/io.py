@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 
+from enum import Enum
 import logging
 from os import makedirs, rename
 from os.path import exists
 from pathlib import Path
 from ccdproc import CCDData
 
+from astropy.visualization import make_lupton_rgb, ImageNormalize
 from astropy.visualization.stretch import HistEqStretch
+import numpy as np
+from skimage.io import imread, imsave
+
+from abberition import calibration
 
 
 def get_first_available_dirname(path,  pad_length: int=3, always_number: bool=True):
@@ -135,7 +141,7 @@ def mkdirs_backup_existing(path, pad_length:int=3):
     '''
     bk_path = None
 
-    if (exists(path)):
+    if exists(path):
         bk_path = get_first_available_dirname(path, pad_length, True)
         rename(path, bk_path)    
 
@@ -180,6 +186,38 @@ def save_image(image:CCDData, path:Path, overwrite:bool=True):
 
     image.write(path, overwrite=overwrite)
 
+
+class ImageScale(Enum):
+    AsIs = 0
+    HistEq = 1
+    Linear = 2
+
+def save_mono_png(image:CCDData, path, overwrite:bool=True, image_scale:ImageScale=ImageScale.HistEq):
+    path = Path(path)
+
+    data = image.data
+    # apply histogram equalization stretch
+    data = image.data
+    stretch = HistEqStretch(data)
+    norm = ImageNormalize(data, stretch=stretch, clip=True)
+    data = norm(data)
+
+    mn = np.min(data)
+    mx = np.max(data)
+
+    # remap data 0-255
+    data = 255.0 * ((mx - mn) * data - mn)
+
+    # convert to uint8
+    data = np.array(data, dtype=np.uint8)
+
+    if overwrite and path.exists():
+        path.unlink()
+
+    # save image
+    imsave(path, data)
+
+
 def save_mono_jpg(image:CCDData, path:Path, overwrite:bool=True, softening_param:float=5.0, stretch:float=700.0):
     save_rgb_jpg(image, image, image, path, overwrite, softening_param, stretch)
 
@@ -204,8 +242,6 @@ def save_rgb_jpg(r:CCDData, g:CCDData, b:CCDData, path:Path, overwrite:bool=True
 
     '''
     
-    from astropy.visualization import make_lupton_rgb
-    import numpy as np
 
     minimum = np.array([np.percentile(r, 1), np.percentile(g, 1), np.percentile(b, 1)])
     maximum = np.array([np.percentile(r, 99.5), np.percentile(g, 99.5), np.percentile(b, 99.5)])
@@ -217,3 +253,32 @@ def save_rgb_jpg(r:CCDData, g:CCDData, b:CCDData, path:Path, overwrite:bool=True
     rgb = make_lupton_rgb(r, g, b, minimum=minimum, Q=softening_param, stretch = stretch, filename=path)
 
     return path
+
+
+def generate_filename(image:CCDData):
+    '''
+    Generate filename for image based on header values. Using binning instead resolution 
+    for filename as it's assumed it's using the entire sensor. 
+
+    '''
+
+    instrument = str(image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', ''))
+    temp = str(image.header['ccd-temp'])
+    binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
+    imagetype = str(image.header['imagetyp'])
+    exp_time = str(image.header['exptime'])
+    quality = calibration.get_quality(image.header)
+    gain = calibration.get_gain(image.header)
+    speed = calibration.get_speed(image.header)
+
+    if imagetype == 'Bias Frame' or imagetype == 'Bias':
+        filename = f'bias.{instrument}.b{binning}.{temp}C.q{quality}.g{gain}.s{speed}.fits'
+
+    elif imagetype == 'Dark Frame' or imagetype == 'Dark':
+        filename = f'dark.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
+
+    elif imagetype == 'Flat Field' or imagetype == 'Flat':
+        filename = f'flat.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
+
+    return filename
+

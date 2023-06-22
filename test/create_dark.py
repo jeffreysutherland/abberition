@@ -33,12 +33,10 @@ for dark_set in dark_sets:
 
     # save dark to library
     dark_path = library.save_dark(dark_image)
-    dark_path = Path(dark_path)
 
-    jpg_path = Path(f'../.output/standard/{dark_path.name}.jpg')
-    jpg_path.parent.mkdir(parents=True, exist_ok=True)
-
-    io.save_mono_jpg(dark_image, output_path / jpg_path)
+    # save png next to library file
+    png_path = str(dark_path) + '.png'
+    io.save_mono_png(dark_image, png_path)
 
 logging.info('finished...')
 

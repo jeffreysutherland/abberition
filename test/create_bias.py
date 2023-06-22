@@ -6,8 +6,6 @@ logging.basicConfig(level=logging.INFO)
 import test_setup
 
 import abberition
-from importlib import reload
-reload(abberition)
 
 from pathlib import Path
 from abberition import io, library, standard
@@ -31,12 +29,10 @@ for bias_set in bias_sets:
     bias_image = standard.create_bias(biases)
 
     bias_path = library.save_bias(bias_image)
-    bias_path = Path(bias_path)
 
-    jpg_path = Path(f'../.output/standard/{bias_path.name}.jpg')
-    jpg_path.parent.mkdir(parents=True, exist_ok=True)
-
-    io.save_mono_jpg(bias_image, jpg_path)
+    # save png next to library file
+    png_path = str(bias_path) + '.png'
+    io.save_mono_png(bias_image, png_path)
 
 logging.info('Finished creating bias frames.')
 
