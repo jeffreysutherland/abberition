@@ -132,4 +132,33 @@ def get_speed(header):
 
     return speed
 
+def calibrate_light(image: ccdp.CCDData, flat=None, bias: ccdp.CCDData=None, dark: ccdp.CCDData=None):
+    '''
+    Calibrate a light image.
 
+    Steps:
+    1. bias calibration
+    2. dark calibration
+    3. flat calibration
+    '''
+
+    if bias is None:
+        bias, _ = library.select_bias(image)
+
+    if dark is None:
+        dark, _ = library.select_dark(image)
+        
+
+    if flat is None:
+        flat, _ = library.select_flat(image)
+    elif isinstance(flat, ccdp.ImageFileCollection):
+        flat, _ = library.select_flat(image, flats=flat)
+    elif isinstance(flat, ccdp.CCDData):
+        pass
+    else:
+        logging.error(f'Invalid flat type for calibrate_light: {type(flat)}')
+
+
+    calib_light = ccdp.ccd_process(image, master_bias=bias, dark_frame=dark, master_flat=flat, exposure_key='exptime', exposure_unit=u.second, dark_scale=True)
+
+    return calib_light

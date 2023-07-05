@@ -208,7 +208,7 @@ def create_flat(ifc_flats, out_dir, min_exp=1.5, dtype=np.float32, data_max=None
 
         # normalize combined flat to max 1
         data = np.array(combined_flat.data)
-        combined_flat.data = (1.0 / np.percentile(data, 99.9)) * data
+        combined_flat.data = (1.0 / np.max(data)) * data
 
         flat_fn = io.generate_filename(combined_flat)
         flat_path = out_path / flat_fn

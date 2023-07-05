@@ -187,7 +187,7 @@ def select_dark(image, ignore_temp=False, temp_threshold = 0.25):
     raise Exception('No darks found matching light')
 
 
-def select_flat(image, ifc_flats=None):
+def select_flat(image, flats:ImageFileCollection=None):
     """
     Select a flat frame from the ifc that matches the parameters of the input light frame. 
     
@@ -221,8 +221,8 @@ def select_flat(image, ifc_flats=None):
 
     """
 
-    if ifc_flats == None:
-        ifc_flats = __library_ifc
+    if flats == None:
+        flats = __library_ifc
 
     filters = {}
     filters['imagetyp'] = 'Flat Field'
@@ -235,15 +235,16 @@ def select_flat(image, ifc_flats=None):
     filters['filter']   = image.header['filter']
     filters['master']   = True
     
-    ifc_flats = ifc_flats.filter(**filters)
+    flats = flats.filter(**filters)
     
     num_flats = 0
-    if type(ifc_flats.summary) != type(None):
-        num_flats = len(ifc_flats.summary)
+    if type(flats.summary) != type(None):
+        num_flats = len(flats.summary)
 
     if num_flats > 0:
         # choose the first image that satisfies requirements
-        flat, flat_filename = next(ifc_flats.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}))
+        # TODO: choose the best one (closest date? etc...)
+        flat, flat_filename = next(flats.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}))
         return flat, flat_filename
     
     return None, None

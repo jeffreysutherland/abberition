@@ -164,6 +164,41 @@ def mkdirs_rm_existing(path):
     # create primary output dir
     makedirs(name=str(path), exist_ok=False)
 
+def copy(src, dst, pad_length:int=3, always_number=True):
+    '''
+    Copy the file, but if the destination already exists, the src file will be renamed to
+    the first available number.
+
+    Parameters
+    ----------
+    src : str
+        Path of the file to copy.
+
+    dst : str
+        Path of the file to copy to.
+
+    pad_length : int
+        Zero-padded length
+    
+    pad_length
+
+    Returns
+    -------
+    If file was backed up, returns path to backup file, else None.
+
+    '''
+    path = get_first_available_filename(dst, pad_length, always_number)
+
+    # create primary output dir
+    makedirs(name=str(dst.parent), exist_ok=True)
+
+    # copy file
+    from shutil import copyfile
+    logging.info(f'src={src}\ndst={dst}\n')
+    copyfile(src, dst)
+
+    return path
+
 def save_image(image:CCDData, path:Path, overwrite:bool=True):
     '''
     Save image to file. If file exists, it will be backed up and overwritten.
@@ -191,25 +226,39 @@ class ImageScale(Enum):
     AsIs = 0
     HistEq = 1
     Linear = 2
+    Remap01 = 3
 
-def save_mono_png(image:CCDData, path, overwrite:bool=True, image_scale:ImageScale=ImageScale.HistEq):
+def save_mono_png(image:CCDData, path, overwrite:bool=True, bits=16, image_scale:ImageScale=ImageScale.HistEq):
     path = Path(path)
 
-    data = image.data
-    # apply histogram equalization stretch
-    data = image.data
-    stretch = HistEqStretch(data)
-    norm = ImageNormalize(data, stretch=stretch, clip=True)
-    data = norm(data)
+    dtype = np.uint8
+    max_val = 255.0
+    if bits == 16:
+        dtype = np.uint16
+        max_val = 65535.0
 
-    mn = np.min(data)
-    mx = np.max(data)
+    if image_scale == ImageScale.Remap01:
+        data = np.clip(image.data, 0, max_val)
+        data = data * max_val
+    if image_scale == ImageScale.AsIs:
+        data = np.clip(image.data, 0, max_val)
 
-    # remap data 0-255
-    data = 255.0 * ((mx - mn) * data - mn)
+    elif image_scale == ImageScale.HistEq:
+        data = image.data
+        # apply histogram equalization stretch
+        data = image.data
+        stretch = HistEqStretch(data)
+        norm = ImageNormalize(data, stretch=stretch, clip=True)
+        data = norm(data)
 
-    # convert to uint8
-    data = np.array(data, dtype=np.uint8)
+        mn = np.min(data)
+        mx = np.max(data)
+
+        data = max_val * ((mx - mn) * data - mn)
+
+    # convert to proper data type if not already
+    if data.dtype != dtype:
+        data = np.array(data, dtype=dtype)
 
     if overwrite and path.exists():
         path.unlink()
