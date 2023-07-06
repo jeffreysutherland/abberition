@@ -107,7 +107,7 @@ def create_dark(darks: ImageFileCollection, sigma_low:float=5.0, sigma_high:floa
     return combined_dark
 
 
-def create_flat(ifc_flats, out_dir, min_exp=1.5, dtype=np.float32, data_max=None):
+def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=np.float32, data_max=None):
     from pathlib import Path
     from os import makedirs
     from ccdproc import CCDData
@@ -127,7 +127,7 @@ def create_flat(ifc_flats, out_dir, min_exp=1.5, dtype=np.float32, data_max=None
     ifc_flats = ifc_flats.filter(imagetyp='Flat Field')
     
     # get list of all unique flat combinations
-    # TODO: Add rotator position angle?
+    # TODO: Add rotator position angle
     property_sets = set((h['instrume'], h['filter'], h['xbinning'], h['ybinning']) for h in ifc_flats.headers())
 
     out_flats = []

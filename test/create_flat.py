@@ -21,7 +21,7 @@ logging.debug(f'data path: {astronomy_data_path.absolute()}')
 
 output_path = Path('../.output/flats/')
 
-flat_sets = [ '2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat', '2023.05.18/sloan_g_flat', '2023.05.18/sloan_i_flat' ]
+flat_sets = [ '2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat', '2023.05.18/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat' ]
 for flat_set in flat_sets:
     flat_src_path = astronomy_data_path / 'data/raw' / flat_set
 
@@ -35,7 +35,7 @@ for flat_set in flat_sets:
     io.mkdirs_backup_existing(flat_out_path)
 
     # create flat
-    flats = standard.create_flat(flats, flat_out_path)
+    flats = standard.create_flats(flats, flat_out_path)
 
     for flat, flat_fn in flats.ccds(return_fname=True):
         png_path = str(flat_out_path / flat_fn) + '.png'

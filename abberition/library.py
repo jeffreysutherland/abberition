@@ -233,18 +233,18 @@ def select_flat(image, flats:ImageFileCollection=None):
     filters['xbinning'] = image.header['xbinning']
     filters['ybinning'] = image.header['ybinning']
     filters['filter']   = image.header['filter']
-    filters['master']   = True
+    filters['standard']   = True
     
-    flats = flats.filter(**filters)
+    filt_flats = flats.filter(**filters)
     
     num_flats = 0
-    if type(flats.summary) != type(None):
-        num_flats = len(flats.summary)
+    if type(filt_flats.summary) != type(None):
+        num_flats = len(filt_flats.summary)
 
     if num_flats > 0:
         # choose the first image that satisfies requirements
         # TODO: choose the best one (closest date? etc...)
-        flat, flat_filename = next(flats.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}))
+        flat, flat_filename = next(filt_flats.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}))
         return flat, flat_filename
     
     return None, None

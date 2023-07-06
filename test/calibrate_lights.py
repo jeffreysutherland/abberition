@@ -8,7 +8,7 @@ logging.getLogger().setLevel(level=logging.INFO)
 import test_setup
 
 from pathlib import Path
-from abberition import io, calibration
+from abberition import conversion, io, calibration
 from ccdproc import ImageFileCollection
 
 from astropy.utils.exceptions import AstropyWarning
@@ -30,7 +30,7 @@ light_out_root = Path('../.output/lights/')
 data_sets = [ 
         #  light_dir          flat_dirs
         ('2023.05.12/m51', ['2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat']),
-        ('2023.05.18/m51', ['2023.05.18/sloan_g_flat', '2023.05.18/sloan_i_flat'])
+        ('2023.05.18/m51', ['2023.05.18/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat']),
     ]
 
 # backup and/or create the lights directory
@@ -72,22 +72,60 @@ for data_set in data_sets:
             io.save_mono_png(flat, flat_dest + '.png', True, 16, io.ImageScale.Remap01)
             flat_files.append(flat_dest)
 
-    flats = ImageFileCollection(calib_out_path, filenames=flat_files, keywords='*')
+    flats = ImageFileCollection(calib_out_path, keywords='*')
 
     # calibrate lights
     logging.info(f'Processing lights from \'{light_src_path}\'')
-    raw_lights = ImageFileCollection(light_src_path, keywords='*', )
+    raw_lights = ImageFileCollection(light_src_path, keywords='*')
+
+    io.mkdirs_backup_existing(light_out_path / 'lights')
 
     for light, light_fn in raw_lights.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
         logging.info(f'Processing \'{light_fn}\'')
-        light_dest = light_out_path / light_fn
 
         # calibrate the light
-        calibrated_light = calibration.calibrate_light(light, flats)
+        calibrated_light, (bias, dark, flat) = calibration.calibrate_light(light, flats, return_calibration=True)
 
-        # save the calibrated light
-        io.save_mono_png(calibrated_light, str(light_dest) + '.png', True, 16, io.ImageScale.AsIs)
+        # convert to 32-bit float
+        calibrated_light = conversion.to_float32(calibrated_light)
+
+        # save the calibrated light and png
+        light_dest = light_out_path / light_fn
         calibrated_light.write(light_dest, overwrite=True)
+
+        save_work = True
+        if save_work:
+            light_work_dir = light_out_path / '.work' / light_fn
+            io.mkdirs_backup_existing(light_work_dir)
+
+            # save the calibrated light as png in working
+            io.save_mono_png(calibrated_light, str(light_dest) + '.png', True, 16, io.ImageScale.AsIs)
+
+            # save the calibration frames
+            bias_dest = light_work_dir / io.generate_filename(bias)
+            bias = conversion.to_float32(bias)
+            bias.write(bias_dest, overwrite=True)
+            io.save_mono_png(bias, str(bias_dest) + '.png', True, 16, io.ImageScale.AsIs)
+
+            dark_dest = light_work_dir / io.generate_filename(dark)
+            dark = conversion.to_float32(dark)
+            dark.write(dark_dest, overwrite=True)
+            io.save_mono_png(dark, str(dark_dest) + '.png', True, 16, io.ImageScale.AsIs)
+
+            if flat is not None:
+                flat_dest = light_work_dir / io.generate_filename(flat)
+                flat = conversion.to_float32(flat)
+                flat.write(flat_dest, overwrite=True)
+                io.save_mono_png(flat, str(flat_dest) + '.png', True, 16, io.ImageScale.Remap01)
+            else:
+                logging.warning('No flat for \'{light_fn}\'')
+
+            # save the original light
+            light_dest = light_work_dir / ('orig.' + light_fn)
+            light = conversion.to_float32(light)
+            light.write(light_dest, overwrite=True)
+            io.save_mono_png(light, str(light_dest) + '.png', True, 16, io.ImageScale.AsIs)
+
 
 logging.info('finished...')
 

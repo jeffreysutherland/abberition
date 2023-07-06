@@ -132,7 +132,7 @@ def get_speed(header):
 
     return speed
 
-def calibrate_light(image: ccdp.CCDData, flat=None, bias: ccdp.CCDData=None, dark: ccdp.CCDData=None):
+def calibrate_light(image: ccdp.CCDData, flat=None, bias: ccdp.CCDData=None, dark: ccdp.CCDData=None, return_calibration=False):
     '''
     Calibrate a light image.
 
@@ -161,4 +161,7 @@ def calibrate_light(image: ccdp.CCDData, flat=None, bias: ccdp.CCDData=None, dar
 
     calib_light = ccdp.ccd_process(image, master_bias=bias, dark_frame=dark, master_flat=flat, exposure_key='exptime', exposure_unit=u.second, dark_scale=True)
 
+    if return_calibration:
+        return calib_light, (bias, dark, flat)
+    
     return calib_light

@@ -231,6 +231,9 @@ class ImageScale(Enum):
 def save_mono_png(image:CCDData, path, overwrite:bool=True, bits=16, image_scale:ImageScale=ImageScale.HistEq):
     path = Path(path)
 
+    # create parent dir if it doesn't exist
+    path.parent.mkdir(parents=True, exist_ok=True)
+
     dtype = np.uint8
     max_val = 255.0
     if bits == 16:
@@ -311,7 +314,7 @@ def generate_filename(image:CCDData):
 
     '''
 
-    instrument = str(image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', ''))
+    instrument = str(image.header['instrume'].replace(' ', '_').replace(':', '').replace('/', '').replace('\'','').replace('\t','').replace('\n',''))
     temp = str(image.header['ccd-temp'])
     binning = str(image.header['xbinning']) + 'x' + str(image.header['ybinning'])
     imagetype = str(image.header['imagetyp'])
@@ -327,7 +330,8 @@ def generate_filename(image:CCDData):
         filename = f'dark.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
 
     elif imagetype == 'Flat Field' or imagetype == 'Flat':
-        filename = f'flat.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
+        filter = str(image.header['filter'].replace(' ', '_').replace(':', '').replace('/', '').replace('\'','').replace('\t','').replace('\n',''))
+        filename = f'flat.{instrument}.b{binning}.{temp}C.{filter}s.q{quality}.g{gain}.s{speed}.fits'
 
     return filename
 
