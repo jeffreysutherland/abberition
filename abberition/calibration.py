@@ -51,6 +51,10 @@ def subtract_bias(image: ccdp.CCDData, bias: ccdp.CCDData=None):
 
     if bias is None:
         bias, _ = library.select_bias(image)
+    
+    if bias is None:
+        logging.error('Bias not found for image.')
+        raise ValueError('Bias not found for image.')
 
     image = ccdp.subtract_bias(image, bias)
 
@@ -82,21 +86,25 @@ def get_quality(header):
         'hc' - High capacity
         'hs' - High speed
         'ln' - Low noise
+        'un' - Unknown
     '''
-    quality = header['quality'].lower()
+    quality = 'unk'
 
-    if quality == 'unknown':
-        cds = header['cds'].lower()
-        if cds == 'fastest & most sensitive':
+    if quality in header:
+        quality = header['quality'].lower()
+
+        if quality == 'unknown':
+            cds = header['cds'].lower()
+            if cds == 'fastest & most sensitive':
+                quality = 'hs'
+            elif cds == 'best quality':
+                quality = 'ln'
+        elif quality == 'high capacity':
+            quality = 'hc'
+        elif quality == 'high speed':
             quality = 'hs'
-        elif cds == 'best quality':
+        elif quality == 'low noise':
             quality = 'ln'
-    elif quality == 'high capacity':
-        quality = 'hc'
-    elif quality == 'high speed':
-        quality = 'hs'
-    elif quality == 'low noise':
-        quality = 'ln'
 
     return quality
 
@@ -109,15 +117,20 @@ def get_gain(header):
         'h' - High gain
         'm' - Medium gain
         'l' - Low gain
+        'u' - Unknown
     '''
-    gain = header['gain'].lower()
 
-    if gain == 'high':
-        gain = 'h'
-    elif gain == 'medium':
-        gain = 'm'
-    elif gain == 'low':
-        gain = 'l'
+    gain = 'unk'
+
+    if 'gain' in header:
+        gain = str(header['gain']).lower()
+
+        if gain == 'high':
+            gain = 'h'
+        elif gain == 'medium':
+            gain = 'm'
+        elif gain == 'low':
+            gain = 'l'
     
     return gain
 

@@ -17,6 +17,28 @@ __library_ifc = ImageFileCollection(__library_path)
 def get_library_path():
     return __library_path
 
+def save_image(image: CCDData):
+    filename = io.generate_filename(image)
+    filepath = __library_path / filename
+    filepath = Path(io.get_first_available_filename(filepath))
+
+    # get image type
+    image_type = image.header['imagetyp']
+
+    if image_type == 'Bias Frame':
+        filepath = save_bias(image)
+    elif image_type == 'Dark Frame':
+        filepath = save_dark(image)
+    elif image_type == 'Flat Field':
+        filepath = save_flat(image)
+    else:
+        filePath = None
+        logging.error(f'Invalid image type for saving to library: {image_type}')
+        raise Exception(f'Can\'t save image as it is not a calibration frame: {image_type}')
+
+    logging.info('Saved image to library file ' + str(filepath))
+    return filepath
+
 def save_bias(image: CCDData):
     filename = io.generate_filename(image)
     filepath = __library_path / filename

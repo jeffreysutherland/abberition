@@ -107,13 +107,13 @@ def create_dark(darks: ImageFileCollection, sigma_low:float=5.0, sigma_high:floa
     return combined_dark
 
 
-def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=np.float32, data_max=None):
+def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=np.float32, data_max=None, reject_too_dark=True, reject_too_bright=True):
     from pathlib import Path
     from os import makedirs
     from ccdproc import CCDData
     import numpy as np
     from astropy import units as u
-    import abberition.io
+    from abberition import io
     
     logging.info('Creating flat standard')
     
@@ -121,11 +121,25 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
     out_path = Path(out_dir)
     makedirs(out_path, exist_ok=True)
 
-    abberition.io.mkdirs_backup_existing(out_path)
+    io.mkdirs_backup_existing(out_path)
     
     # pre-filter flat collection for flats only
-    ifc_flats = ifc_flats.filter(imagetyp='Flat Field')
+    flat_filter = {'imagetyp':'Flat Field'}
+    ifc_flats_orig = ifc_flats.filter(**flat_filter)
+
+    # ensure all files have filter
+    tmp_src_path = Path(tempfile.mkdtemp())
+    for ccd, ccd_fn in ifc_flats_orig.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
+        if 'filter' not in ccd.header:
+            logging.debug(f'Filter not defined for {ccd_fn}. Setting to \'NONE\'.')
+            ccd.header['filter'] = 'NONE'
+        else:
+            logging.debug(f'{ccd_fn}:{ccd.header["filter"]}')
+
+        ccd.write(tmp_src_path / ccd_fn)
     
+    ifc_flats = ImageFileCollection(tmp_src_path, keywords='*')
+   
     # get list of all unique flat combinations
     # TODO: Add rotator position angle
     property_sets = set((h['instrume'], h['filter'], h['xbinning'], h['ybinning']) for h in ifc_flats.headers())
@@ -164,10 +178,10 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
             pct_1 = np.percentile(flat, 1) / max_data_val
             pct_99 = np.percentile(flat, 99) / max_data_val
             
-            if pct_1 < 0.05:
+            if pct_1 < 0.05 and not reject_too_dark:
                 logging.debug(f'Rejected flat {flat_fn} as it is too dark')
                 use_flat = False
-            elif pct_99 > 0.9:
+            elif pct_99 > 0.9 and not reject_too_bright:
                 logging.debug(f'Rejected flat {flat_fn} as it is too bright')
                 use_flat = False
 
@@ -190,6 +204,7 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
                 
                 to_combine.append(flat_temp_fn)
                 logging.debug(f'Calibrated ', flat_temp_fn)
+
 
         logging.debug(f'Combining {len(to_combine)} calibrated flats')
     

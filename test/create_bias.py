@@ -17,7 +17,8 @@ astronomy_data_path = Path(astronomy_data_dir)
 logging.debug(f'data dir: {astronomy_data_dir}')
 logging.debug(f'data path: {astronomy_data_path.absolute()}')
 
-bias_sets = [ 'bias.1x1.-50C.fast', 'bias.1x1.-50C.hq', 'bias.2x2.-50C.fast', 'bias.2x2.-50C.hq' ]
+#bias_sets = [ 'bias.1x1.-50C.fast', 'bias.1x1.-50C.hq', 'bias.2x2.-50C.fast', 'bias.2x2.-50C.hq' ]
+bias_sets = [ 'bias.1x1.-50C.hq' ]
 
 for bias_set in bias_sets:
     bias_src_path = astronomy_data_path / 'data/calibration/pixis_2048b' / bias_set

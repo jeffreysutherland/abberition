@@ -24,13 +24,17 @@ src_path = astronomy_data_path
 
 light_src_root = astronomy_data_path
 flat_src_root = Path('../.output/flats/')
-light_out_root = Path('../.output/lights/')
+light_out_root = Path('../.output/lights_g/')
 
 # (light_dir, flat_dirs)
 data_sets = [ 
         #  light_dir          flat_dirs
-        ('2023.05.12/m51', ['2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat']),
-        ('2023.05.18/m51', ['2023.05.18/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat']),
+        #('2023.05.12/m51', ['2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat']),
+        #('2023.05.18/m51', ['2023.05.12/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat']),
+
+        # retry with different flats
+        ('2023.05.18/m51/.tmp_g', ['2023.05.12/sloan_g_flat']),
+
     ]
 
 # backup and/or create the lights directory
@@ -48,11 +52,11 @@ for data_set in data_sets:
     logging.info(f'flat_src_paths={[str(p) for p in flat_src_paths]}')
 
     # create dirs for raw lights and calibration frames
-    light_out_path = light_out_root / data_set[0]
-    io.mkdirs_backup_existing(light_out_path)
-    logging.info(f'light_out_path={light_out_path}')
+    out_path = light_out_root / data_set[0]
+    io.mkdirs_backup_existing(out_path)
+    logging.info(f'out_path={out_path}')
 
-    calib_out_path = light_out_path / 'calib'
+    calib_out_path = out_path / 'calib'
     io.mkdirs_backup_existing(calib_out_path)
     logging.info(f'calib_out_path={calib_out_path}')
 
@@ -78,7 +82,11 @@ for data_set in data_sets:
     logging.info(f'Processing lights from \'{light_src_path}\'')
     raw_lights = ImageFileCollection(light_src_path, keywords='*')
 
-    io.mkdirs_backup_existing(light_out_path / 'lights')
+    io.mkdirs_backup_existing(out_path / 'lights')
+
+    # save the calibrated light and png
+    light_out_path = out_path / 'lights'
+    io.mkdirs_backup_existing(light_out_path)
 
     for light, light_fn in raw_lights.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
         logging.info(f'Processing \'{light_fn}\'')
@@ -89,13 +97,12 @@ for data_set in data_sets:
         # convert to 32-bit float
         calibrated_light = conversion.to_float32(calibrated_light)
 
-        # save the calibrated light and png
         light_dest = light_out_path / light_fn
         calibrated_light.write(light_dest, overwrite=True)
 
-        save_work = True
+        save_work = False
         if save_work:
-            light_work_dir = light_out_path / '.work' / light_fn
+            light_work_dir = out_path / '.work' / light_fn
             io.mkdirs_backup_existing(light_work_dir)
 
             # save the calibrated light as png in working
@@ -121,15 +128,12 @@ for data_set in data_sets:
                 logging.warning('No flat for \'{light_fn}\'')
 
             # save the original light
-            light_dest = light_work_dir / ('orig.' + light_fn)
+            orig_dest = light_work_dir / ('orig.' + light_fn)
             light = conversion.to_float32(light)
-            light.write(light_dest, overwrite=True)
-            io.save_mono_png(light, str(light_dest) + '.png', True, 16, io.ImageScale.AsIs)
+            light.write(orig_dest, overwrite=True)
+            io.save_mono_png(light, str(orig_dest) + '.png', True, 16, io.ImageScale.AsIs)
 
 
 logging.info('finished...')
-
-# %%
-# Manually verify the calibrated lights are reasonable
 
 #%%

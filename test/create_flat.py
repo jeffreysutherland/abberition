@@ -19,9 +19,10 @@ astronomy_data_path = Path(astronomy_data_dir)
 logging.debug(f'data dir: {astronomy_data_dir}')
 logging.debug(f'data path: {astronomy_data_path.absolute()}')
 
-output_path = Path('../.output/flats/')
+output_path = Path('../.output/flats2/')
 
-flat_sets = [ '2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat', '2023.05.18/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat' ]
+flat_sets = [ '2023.05.18/guide_flat/test' ]#, '2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat', '2023.05.18/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat' ]
+
 for flat_set in flat_sets:
     flat_src_path = astronomy_data_path / 'data/raw' / flat_set
 
@@ -35,7 +36,7 @@ for flat_set in flat_sets:
     io.mkdirs_backup_existing(flat_out_path)
 
     # create flat
-    flats = standard.create_flats(flats, flat_out_path)
+    flats = standard.create_flats(flats, flat_out_path, reject_too_dark=False)
 
     for flat, flat_fn in flats.ccds(return_fname=True):
         png_path = str(flat_out_path / flat_fn) + '.png'
@@ -43,4 +44,21 @@ for flat_set in flat_sets:
 
 logging.info('finished...')
 
+# %%
+ifc = ImageFileCollection('e:/astrodev/astronomy.data/data/raw/2023.05.18/guide_flat/test', keywords='*')
+print('files:')
+for ccd_fn in ifc.files:
+    print(ccd_fn)
+
+for hdu in ifc.hdus(True):
+    # if header has filter, print it
+    if 'filter' in hdu.header:   
+        print(hdu.header ['filter'])
+    else:
+        print('no filter')
+
+for ccd in ifc.ccds(return_fname=True, ccd_kwargs={'unit':'adu'}):
+    print('foo')
+
+print('done')
 # %%
