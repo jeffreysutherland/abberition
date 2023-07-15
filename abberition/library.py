@@ -25,11 +25,11 @@ def save_image(image: CCDData):
     # get image type
     image_type = image.header['imagetyp']
 
-    if image_type == 'Bias Frame':
+    if image_type == 'bias':
         filepath = save_bias(image)
-    elif image_type == 'Dark Frame':
+    elif image_type == 'dark':
         filepath = save_dark(image)
-    elif image_type == 'Flat Field':
+    elif image_type == 'flat':
         filepath = save_flat(image)
     else:
         filePath = None
@@ -81,7 +81,7 @@ def select_bias(image, ignore_temp=True, temp_threshold = 0.25):
         'bitpix' - Bits per pixel
         'xbinning' - X binning value
         'ybinning' - Y binning value
-        'readoutm' - Readout mode
+        'speed' - capture speed (MHz)
         'gain' - Gain
 
     Other keywords checked:
@@ -106,36 +106,57 @@ def select_bias(image, ignore_temp=True, temp_threshold = 0.25):
     """        
 
     filters = {}
-    filters['imagetyp'] = 'Bias Frame'
+    filters['imagetyp'] = 'bias|bias frame'
     filters['instrume'] = image.header['instrume']
     filters['naxis']    = image.header['naxis']
     filters['naxis1']   = image.header['naxis1']
     filters['naxis2']   = image.header['naxis2']
     filters['xbinning'] = image.header['xbinning']
     filters['ybinning'] = image.header['ybinning']
-    filters['readoutm']  = image.header['readoutm']
-    filters['gain']  = image.header['gain']
-    filters['standard']   = True
+
+    if 'speed' in image.header and image.header['speed'] > 0:
+        filters['speed'] = image.header['speed']
 
 
-    ifc_biases = __library_ifc.filter(**filters)
+    gain = None
+    if 'gain' in image.header:
+        gain = image.header['gain']
+    elif 'gainraw' in image.header:
+        gain = image.header['gainraw']
+
+    if gain is not None and gain >= 0:
+        filters['gain'] = gain
+
+    filters['standard'] = True
+
+    print('filters: ' + str(filters))
+
+    ifc_biases = __library_ifc.filter(regex_match=True, **filters)
 
     num_biases = 0
     if ifc_biases.summary:
         num_biases = len(ifc_biases.summary)
+    print(ifc_biases.summary)
     
-    if num_biases > 0:
+    if num_biases > 0:        
         # choose the first within temp range
-        ref_temp = float(image.header['ccd-temp'])
-        
+        if not ignore_temp:
+            ref_temp = float(image.header['ccd-temp'])
+    
         for bias, bias_filename in ifc_biases.ccds(return_fname=True):
+
+            if ignore_temp:
+                return bias, bias_filename
+    
             bias_temp = float(bias.header['ccd-temp'])
             
             if bias_temp > ref_temp - temp_threshold and bias_temp < ref_temp + temp_threshold:
                 return bias, bias_filename
     
-        raise Exception('Couldn\'t find matching bias as none of the ' + num_biases + ' otherwise matching biases have temperature within threshold (' + ref_temp + ' +/- ' + temp_threshold + ').')
+        logging.error(f'Couldn\'t find matching bias as none of the {num_biases} otherwise matching biases have temperature within threshold ({ref_temp}C+/-{temp_threshold}).')
+        raise Exception(f'Couldn\'t find matching bias as none of the {num_biases} otherwise matching biases have temperature within threshold ({ref_temp}C+/-{temp_threshold}).')
     
+    logging.error('No biases found matching light')
     raise Exception('No biases found matching light')
 
 
@@ -175,17 +196,30 @@ def select_dark(image, ignore_temp=False, temp_threshold = 0.25):
     """        
     
     filters = {}
-    filters['imagetyp'] = 'Dark Frame'
+    filters['imagetyp'] = 'dark|dark frame'
     filters['instrume'] = image.header['instrume']
     filters['naxis']    = image.header['naxis']
     filters['naxis1']   = image.header['naxis1']
     filters['naxis2']   = image.header['naxis2']
     filters['xbinning'] = image.header['xbinning']
     filters['ybinning'] = image.header['ybinning']
-    filters['readoutm']  = image.header['readoutm']
-    filters['gain']  = image.header['gain']
+
+
+    if 'speed' in image.header and image.header['speed'] > 0:
+        filters['speed'] = image.header['speed']
+
+
+    gain = None
+    if 'gain' in image.header:
+        gain = image.header['gain']
+    elif 'gainraw' in image.header:
+        gain = image.header['gainraw']
+
+    if gain is not None and gain >= 0:
+        filters['gain'] = gain
+
     
-    ifc_darks = __library_ifc.filter(**filters)
+    ifc_darks = __library_ifc.filter(regex_match=True, **filters)
 
     num_darks = 0
     if ifc_darks.summary:
@@ -193,7 +227,8 @@ def select_dark(image, ignore_temp=False, temp_threshold = 0.25):
 
     if num_darks > 0:
         # choose the first within temp range
-        ref_temp = float(image.header['ccd-temp'])
+        if not ignore_temp:
+            ref_temp = float(image.header['ccd-temp'])
         
         for dark, dark_filename in ifc_darks.ccds(return_fname=True):
             if ignore_temp:
@@ -204,8 +239,10 @@ def select_dark(image, ignore_temp=False, temp_threshold = 0.25):
             if dark_temp > ref_temp - temp_threshold and dark_temp < ref_temp + temp_threshold:
                 return dark, dark_filename
     
-        raise Exception('Couldn\'t find matching dark as none of the ' + num_darks + ' otherwise matching darks have temperature within threshold (' + ref_temp + ' +/- ' + temp_threshold + ').')
+        logging.error(f'Couldn\'t find matching dark as none of the {num_darks} otherwise matching darks have temperature within threshold ({ref_temp}C+/-{temp_threshold}).')
+        raise Exception(f'Couldn\'t find matching dark as none of the {num_darks} otherwise matching darks have temperature within threshold ({ref_temp}C+/-{temp_threshold}).')
     
+    logging.error('No darks found matching light')
     raise Exception('No darks found matching light')
 
 
@@ -247,7 +284,7 @@ def select_flat(image, flats:ImageFileCollection=None):
         flats = __library_ifc
 
     filters = {}
-    filters['imagetyp'] = 'Flat Field'
+    filters['imagetyp'] = 'flat'
     filters['instrume'] = image.header['instrume']
     filters['naxis']    = image.header['naxis']
     filters['naxis1']   = image.header['naxis1']

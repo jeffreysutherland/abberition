@@ -51,7 +51,7 @@ def is_bias_dark_match(bias, dark):
             bias.header['ybinning'] == dark.header['ybinning'] and \
             bias.header['ccd-temp'] == dark.header['ccd-temp'] and \
             bias.header['gain'] == dark.header['gain'] and \
-            bias.header['readoutm'] == dark.header['readoutm']
+            bias.header['speed'] == dark.header['speed']
 
 
 
@@ -107,7 +107,7 @@ def create_dark(darks: ImageFileCollection, sigma_low:float=5.0, sigma_high:floa
     return combined_dark
 
 
-def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=np.float32, data_max=None, reject_too_dark=True, reject_too_bright=True):
+def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=np.float32, data_max=None, reject_too_dark=True, reject_too_bright=True, ignore_temp=False):
     from pathlib import Path
     from os import makedirs
     from ccdproc import CCDData
@@ -119,12 +119,10 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
     
     # create output dir
     out_path = Path(out_dir)
-    makedirs(out_path, exist_ok=True)
-
     io.mkdirs_backup_existing(out_path)
     
     # pre-filter flat collection for flats only
-    flat_filter = {'imagetyp':'Flat Field'}
+    flat_filter = {'imagetyp':'flat'}
     ifc_flats_orig = ifc_flats.filter(**flat_filter)
 
     # ensure all files have filter
@@ -178,10 +176,10 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
             pct_1 = np.percentile(flat, 1) / max_data_val
             pct_99 = np.percentile(flat, 99) / max_data_val
             
-            if pct_1 < 0.05 and not reject_too_dark:
+            if pct_1 < 0.05 and reject_too_dark:
                 logging.debug(f'Rejected flat {flat_fn} as it is too dark')
                 use_flat = False
-            elif pct_99 > 0.9 and not reject_too_bright:
+            elif pct_99 > 0.9 and reject_too_bright:
                 logging.debug(f'Rejected flat {flat_fn} as it is too bright')
                 use_flat = False
 
@@ -196,7 +194,7 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
                 flat = conversion.to_type(flat, dtype, True)
 
                 # calibrate flat and save to temp dir
-                calibrated_flat = calibration.calibrate_flat(flat)
+                calibrated_flat = calibration.calibrate_flat(flat, ignore_temp=ignore_temp)
 
                 logging.debug(f'saving calibrated flat: {flat_fn}')
                 flat_temp_fn = str(working_path / flat_fn)
@@ -227,6 +225,9 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
 
         flat_fn = io.generate_filename(combined_flat)
         flat_path = out_path / flat_fn
+
+        # ensure proper data type
+        combined_flat = conversion.to_type(combined_flat, dtype, True)
 
         combined_flat.write(str(flat_path))
         out_flats.append(flat_fn)

@@ -5,14 +5,15 @@ import logging
 from os import makedirs, rename
 from os.path import exists
 from pathlib import Path
-from ccdproc import CCDData
+import tempfile
+from ccdproc import CCDData, ImageFileCollection
 
 from astropy.visualization import make_lupton_rgb, ImageNormalize
 from astropy.visualization.stretch import HistEqStretch
 import numpy as np
 from skimage.io import imread, imsave
 
-from abberition import calibration
+from abberition import calibration, image
 
 
 def get_first_available_dirname(path,  pad_length: int=3, always_number: bool=True):
@@ -323,15 +324,69 @@ def generate_filename(image:CCDData):
     gain = calibration.get_gain(image.header)
     speed = calibration.get_speed(image.header)
 
-    if imagetype == 'Bias Frame' or imagetype == 'Bias':
+    if imagetype == 'bias':
         filename = f'bias.{instrument}.b{binning}.{temp}C.q{quality}.g{gain}.s{speed}.fits'
 
-    elif imagetype == 'Dark Frame' or imagetype == 'Dark':
+    elif imagetype == 'dark':
         filename = f'dark.{instrument}.b{binning}.{temp}C.{exp_time}s.q{quality}.g{gain}.s{speed}.fits'
 
-    elif imagetype == 'Flat Field' or imagetype == 'Flat':
+    elif imagetype == 'flat':
         filter = str(image.header['filter'].replace(' ', '_').replace(':', '').replace('/', '').replace('\'','').replace('\t','').replace('\n',''))
         filename = f'flat.{instrument}.b{binning}.{temp}C.{filter}s.q{quality}.g{gain}.s{speed}.fits'
 
     return filename
 
+def add_keys_to_dir(src:Path|str|ImageFileCollection, kvpairs:dict, out_path:Path=None, overwrite:bool=True):
+    '''
+    Add a keyword to the image header. If the keyword already exists, it will be overwritten.
+    '''
+
+    if isinstance(src, str) or isinstance(src, Path):
+        path = Path(src)
+        images = ImageFileCollection(path, keywords='*')
+    elif isinstance(src, ImageFileCollection):
+        images = src
+    else:
+        print(f'Invalid type for src: {type(src)}')
+        raise TypeError(f'Invalid type for src: {type(src)}')
+
+    if out_path is None:
+        save_loc = ''
+    else:
+        save_loc = out_path
+    
+    for header in images.headers(save_location=save_loc, overwrite=overwrite):
+        for key, value in kvpairs.items():
+            header[key] = value
+
+
+def get_images(path:Path|str, copy_to_temp_dir:bool=True, filters:dict=None, sanitize_headers:bool=False, overwrite:bool=False):
+    keywords = list(filters.keys()) if filters is not None else '*'
+    ifc = ImageFileCollection(path, keywords = keywords)
+    print(f'ifc before filtering: {ifc.summary}')
+
+    if filters is not None:
+        ifc = ifc.filter(**filters)
+        logging.debug(f'Filtering images by filters: {filters}')
+
+    print(f'ifc after filtering: {ifc.summary}')
+
+    if copy_to_temp_dir:
+        tmp_dir = tempfile.mkdtemp()
+        logging.debug(f'Copying images to temp dir for sanitization ({tmp_dir})')
+
+        for h in ifc.headers(save_location=tmp_dir):
+            if sanitize_headers:
+                image.sanitize(h)
+                logging.debug('sanitizing...')        
+    else:
+        logging.debug('no copy sanitizing...')
+        for h in ifc.headers(overwrite=overwrite):
+            if sanitize_headers:
+                image.sanitize(h)
+                logging.debug('no copy sanitizing...')
+
+    logging.debug('Creating ImageFileCollection from temp dir')
+    ifc = ImageFileCollection(tmp_dir, keywords='*')
+
+    return ifc

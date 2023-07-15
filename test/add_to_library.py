@@ -25,6 +25,7 @@ for d in data:
 
     for ccd in ifc.ccds(ccd_kwargs={'unit':'adu'}):
         ccd.meta['standard'] = True
+        ccd.meta['readoutm'] = 'Long Exposure Mode'
 
         if 'imagetyp' not in ccd.meta:
             ccd.meta['imagetyp'] = image_type

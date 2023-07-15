@@ -19,7 +19,7 @@ def calibrate_dark(image:ccdp.CCDData):
     return subtract_bias(image)
 
 
-def calibrate_flat(raw_flat:ccdp.CCDData):
+def calibrate_flat(raw_flat:ccdp.CCDData, ignore_temp=False):
     '''
     Calibrate a dark image.
 
@@ -29,8 +29,8 @@ def calibrate_flat(raw_flat:ccdp.CCDData):
 
     '''
 
-    bias_calib_flat = subtract_bias(raw_flat)
-    calib_flat = subtract_dark(bias_calib_flat)
+    bias_calib_flat = subtract_bias(raw_flat, ignore_temp=ignore_temp)
+    calib_flat = subtract_dark(bias_calib_flat, ignore_temp=ignore_temp)
 
     return calib_flat
 
@@ -43,14 +43,14 @@ def apply_mask():
     raise NotImplementedError()
 
 
-def subtract_bias(image: ccdp.CCDData, bias: ccdp.CCDData=None):
+def subtract_bias(image: ccdp.CCDData, bias: ccdp.CCDData=None, ignore_temp=False):
     '''
     Calibrate image with bias subtraction. If bias is not provided, it will be loaded from the library.
     '''
     logging.info('Calibrating image with bias.')
 
     if bias is None:
-        bias, _ = library.select_bias(image)
+        bias, _ = library.select_bias(image, ignore_temp=ignore_temp)
     
     if bias is None:
         logging.error('Bias not found for image.')
@@ -62,14 +62,14 @@ def subtract_bias(image: ccdp.CCDData, bias: ccdp.CCDData=None):
 
     return image
 
-def subtract_dark(image:ccdp.CCDData, dark: ccdp.CCDData=None):
+def subtract_dark(image:ccdp.CCDData, dark: ccdp.CCDData=None, ignore_temp=False):
     '''
     Subtract dark from image. Scaled by time using 'exptime' keyword
     '''
     logging.info('Calibrating image with dark.')
 
     if dark is None:
-        dark, _ = library.select_dark(image)
+        dark, _ = library.select_dark(image, ignore_temp=ignore_temp)
     
     # subtract the dark
     image_calib = ccdp.subtract_dark(image, dark, exposure_time='exptime', exposure_unit=u.second, scale=True)
