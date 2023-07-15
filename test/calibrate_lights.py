@@ -29,11 +29,11 @@ light_out_root = Path('../.output/lights_g/')
 # (light_dir, flat_dirs)
 data_sets = [ 
         #  light_dir          flat_dirs
-        #('2023.05.12/m51', ['2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat']),
-        #('2023.05.18/m51', ['2023.05.12/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat']),
+        ('2023.05.12/m51', ['2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat']),
+        ('2023.05.18/m51', ['2023.05.12/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat']),
 
         # retry with different flats
-        ('2023.05.18/m51/.tmp_g', ['2023.05.12/sloan_g_flat']),
+        #('2023.05.18/m51/.tmp_g', ['2023.05.12/sloan_g_flat']),
 
     ]
 
@@ -80,11 +80,10 @@ for data_set in data_sets:
 
     # calibrate lights
     logging.info(f'Processing lights from \'{light_src_path}\'')
-    raw_lights = ImageFileCollection(light_src_path, keywords='*')
+    raw_lights = io.get_images(light_src_path, True, sanitize_headers=True)
 
     io.mkdirs_backup_existing(out_path / 'lights')
 
-    # save the calibrated light and png
     light_out_path = out_path / 'lights'
     io.mkdirs_backup_existing(light_out_path)
 

@@ -47,7 +47,7 @@ def sanitize(header):
     # ensure optional keywords are present and valid
     __validate_imagetyp(header)
     __validate_quality(header)
-    __ensure_int_field(header, 'gain', -1)
+    __validate_gain(header)
     __ensure_float_field(header, 'gainadu', 0.0)
     __ensure_float_field(header, 'speed', 0.0)
     __ensure_float_field(header, 'ccd-temp', 100.0)
@@ -173,3 +173,26 @@ def __validate_quality(header):
 
     header[__adc_quality_key] = quality
 
+def __validate_gain(header):
+    '''
+    Ensure the specified key is an integer.
+    '''
+    key = 'gain'
+
+    if key not in header:
+        default = -1
+        logging.warning(f'Keyword \'{key}\' is not found. Using default value of {default}.')
+        header[key] = default
+
+    val = header[key]
+
+    if isinstance(val, str):
+        if val.lower() == 'high':
+            header[key] = 2
+        elif val.lower() == 'low':
+            header[key] = 0
+
+    if not isinstance(header[key], int):
+        logging.error(f'Mandatory keyword \'{key}\' expected an integer, found {header[key]}.')
+        raise ValueError(f'Mandatory keyword \'{key}\' expected an integer, found {header[key]}')
+ 
