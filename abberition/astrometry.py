@@ -1,3 +1,5 @@
+from ccdproc import CCDData
+
 # find stars in the image
 
 
@@ -70,8 +72,8 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     if not p in sys.path:
         sys.path.append(p)
         
-    import wcs_helpers
-    import debug_draw
+    from . import wcs_helpers
+    from . import debug_draw
 
     log_status = True
     log_plots = True
@@ -105,7 +107,7 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
 
     # Load file
     #print(f'Loading fits file ({in_filename})')
-    hdus = fits.open(in_filename)
+    hdus = ccd.to_hdu() #fits.open(in_filename)
     im_hdu = hdus[0]
     header = im_hdu.header
     data = im_hdu.data.astype(np.float32)

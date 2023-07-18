@@ -1,3 +1,4 @@
 {
-    "files.useExperimentalFileWatcher" : true
+    "files.useExperimentalFileWatcher" : true,
+    "editor.unusualLineTerminators": "off"
 }

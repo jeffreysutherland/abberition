@@ -37,7 +37,7 @@ import numpy as np
 from numpy.linalg import norm
 import time
 from  astropy.wcs import WCS
-import debug_draw
+from . import debug_draw
 
 def solve_astrometry_net(stars_x_px, stars_y_px, width, height):
     # Use astrometry.net for initial wcs

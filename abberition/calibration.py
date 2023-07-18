@@ -178,3 +178,11 @@ def calibrate_light(image: ccdp.CCDData, flat=None, bias: ccdp.CCDData=None, dar
         return calib_light, (bias, dark, flat)
     
     return calib_light
+
+def estimate_background(image: ccdp.CCDData):
+    '''
+    Estimate the background of an image.
+    ''' 
+    logging.info('Estimating background.')
+    
+    import photutils
