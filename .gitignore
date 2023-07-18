@@ -162,3 +162,5 @@ cython_debug/
 .output/
 .output.bk/
 library.bk/
+
+.api_keys
