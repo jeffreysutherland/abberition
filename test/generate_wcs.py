@@ -4,26 +4,25 @@ import logging
 import warnings
 logging.getLogger().setLevel(level=logging.DEBUG)
 
-import test_setup
+from test_setup import *
 
 from pathlib import Path
-from abberition import io, library, standard
-from ccdproc import ImageFileCollection
+from abberition import astrometry, io
 
 from astropy.utils.exceptions import AstropyWarning
 warnings.simplefilter('ignore', category=AstropyWarning)
 
-image_sets = ['']
-flat_sets = [ '2023.05.18/guide_flat/best/fixed' ]#, '2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat', '2023.05.18/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat' ]
-ignore_temp=True
+data_path = Path('../.output/lights_g/2023.05.12/m51/lights')
+wcs_path = Path('../.output/lights_g/2023.05.12/m51/wcs')
 
-astronomy_data_dir = '../../astrodev/astronomy.data/'
-astronomy_data_path = Path(astronomy_data_dir)
+io.mkdirs_backup_existing(wcs_path)
 
-logging.debug(f'data dir: {astronomy_data_dir}')
-logging.debug(f'data path: {astronomy_data_path.absolute()}')
+ifc = io.get_images(data_path, True, sanitize_headers=True)
 
-output_path = Path('../.output/flats2/')
+for ccd, fn in ifc.ccds(return_fname=True):
+    out_fn = wcs_path / fn
+    wcs_ccd = astrometry.full_wcs(ccd, out_fn, overwrite=True)
 
-for flat_set in flat_sets:
-    flat_src_path = astronomy_data_path / 'data/raw' / flat_set
+
+
+# %%
