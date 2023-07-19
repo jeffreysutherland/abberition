@@ -37,7 +37,7 @@ import numpy as np
 from numpy.linalg import norm
 import time
 from  astropy.wcs import WCS
-from . import debug_draw
+from . import visualize
 
 def solve_astrometry_net(stars_x_px, stars_y_px, width, height):
     # Use astrometry.net for initial wcs
@@ -189,38 +189,6 @@ def remove_wcs_header(header:fits.Header):
 
     for key in wcs_keywords_to_remove:
         header.remove(key, ignore_missing=True, remove_all=True)
-
-def find_stars(data, fwhm_est=2.0, fwhm_min=1.5, threshold_stddevs=4.0, mask=None, draw=False):
-    '''
-    Finds stars via iraf method and returns table with:
-        id: unique object identification number.
-        xcentroid, ycentroid: object centroid.
-        fwhm: object FWHM.
-        sharpness: object sharpness.
-        roundness: object roundness.
-        pa: object position angle (degrees counter clockwise from the positive x axis).
-        npix: the total number of (positive) unmasked pixels.
-        sky: the local sky value.
-        peak: the peak, sky-subtracted, pixel value of the object.
-        flux: the object instrumental flux.
-        mag: the object instrumental magnitude calculated as -2.5 * log10(flux).
-
-    '''
-    from astropy.stats import sigma_clipped_stats
-    from photutils.detection import IRAFStarFinder
-
-    mean, median, std = sigma_clipped_stats(data, sigma=3.0)
-
-    iraffind = IRAFStarFinder(fwhm=fwhm_est, exclude_border=True, threshold=threshold_stddevs * std)
-    sources = iraffind.find_stars(data, mask=mask)
-    sources.sort('peak', reverse=True) 
-
-    if draw:
-        plt.figure(figsize=(25, 25))
-        debug_draw.draw_stars(debug_draw.data_to_image(data), sources['xcentroid'], sources['ycentroid'])
-
-    return sources
-
 
 
 def get_fits_sky_coord(header: fits.Header, ra_key='OBJCTRA', dec_key='OBJCTDEC'):
@@ -442,7 +410,7 @@ def test_solve_wcs():
     import numpy as np
     import pathlib
 
-    import debug_draw
+    from . import visualize
 
     filename = 'pelican.00'
 
@@ -462,7 +430,7 @@ def test_solve_wcs():
     print(tbl)
 
     plt.figure(figsize=(20,20))
-    debug_draw.draw_wcs_distortion(wcs)
+    visualize.draw_wcs_distortion(wcs)
 
 #test_solve_wcs()
 

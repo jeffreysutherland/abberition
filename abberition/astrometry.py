@@ -3,20 +3,7 @@ from ccdproc import CCDData
 # find stars in the image
 
 
-def solve_wcs(ccd):
-    '''
-    Solve the WCS for a given image using astrometry.net
-    '''
-    pass
-
-def refine_wcs(ccd):
-    '''
-    Refine the WCS for a given image using gaia data pairs
-    '''
-    pass
-
-
-def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
+def solve_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     '''
     WCS refinement flow:
     - load image
@@ -49,9 +36,6 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
 
     ## Default timeout for connecting to server
     timeout = 120
-
-
-
     '''
 
 
@@ -67,13 +51,14 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     import os
     import pathlib
     import sys
+    import logging
 
     p = os.path.abspath("../processing")
     if not p in sys.path:
         sys.path.append(p)
         
     from . import wcs_helpers
-    from . import debug_draw
+    #from . import visualize
 
     log_status = True
     log_plots = True
@@ -97,30 +82,23 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
 
     # gwcs refine
     gwcs_refin_max_stdev = 2.0
-
-    # inputs
-    #src_path = pathlib.Path('../examples/data/wcs_test')
-
-
-    #in_filename = str(src_path / f'{filename}.fits')
-    #out_filename = str(src_path / f'{filename}.wcs.fits')
-
-    # Load file
-    #print(f'Loading fits file ({in_filename})')
-    hdus = ccd.to_hdu() #fits.open(in_filename)
+    hdus = ccd.to_hdu()
     im_hdu = hdus[0]
     header = im_hdu.header
     data = im_hdu.data.astype(np.float32)
     width, height = np.shape(data)
 
-    print('removing existing wcs header')
+    logging.info('removing existing wcs header')
     wcs_helpers.remove_wcs_header(header)
 
     # find star pixel locations, ordered by brightness
-    print('Finding stars in image.')
-    stars_tbl = wcs_helpers.find_stars(data, fwhm_est, fwhm_min, find_threshold, draw=True)
+    logging.info('Finding stars in image.')
+    stars_tbl = find_stars(data, fwhm_est, fwhm_min, find_threshold)
+
+    return
 
     if len(stars_tbl) < min_star_count:
+        logging.error(f'Not enough stars found - try tuning threshold and fwhm estimate')
         raise Exception('Not enough stars found - try tuning threshold and fwhm estimate')
 
     stars_x_px = np.array(stars_tbl['xcentroid'], dtype=np.float32)
@@ -129,13 +107,15 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
 
     matched_star_indices = np.array(range(len(stars_x_px)))
     all_star_indices = matched_star_indices
-    print(f'Found {len(stars_tbl)} stars.')
+    logging.info(f'Found {len(stars_tbl)} stars.')
 
     # Use astrometry.net for initial wcs
+    logging.info('Solving astrometry.net WCS')
     astnet_wcs = wcs_helpers.solve_astrometry_net(stars_x_px, stars_y_px, width, height)
 
+
     # Get contained GAIA stars
-    print('Searching for gaia stars within wcs footprint')
+    logging.info('Searching for gaia stars within wcs footprint')
     gaias_tbl = wcs_helpers.gaia_get_wcs(astnet_wcs, (2048, 2048), max_count=gaia_request_count, mag_limit=gaia_mag_limit)
 
     # set up some data structures for the found gaiass
@@ -145,7 +125,7 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     gaias_sky_np = np.array([gaias_ra, gaias_dec])
 
     matched_gaia_indices = np.array(range(len(gaias_ra)))
-    print(f'... found {len(gaias_tbl)} Gaia stars.')
+    logging.info(f'... found {len(gaias_tbl)} Gaia stars.')
 
     def get_dists(src, dests):
         # src is [a, b]
@@ -190,10 +170,10 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
 
         return np.array(indices), np.array(separations)    
 
-    print('matching gaia projections with found star positions')
+    logging.info('matching gaia projections with found star positions')
     astnet_gaias_px = np.array(astnet_wcs.world_to_pixel(gaias_sky))
     idx, sep = match_coords_px(stars_px, astnet_gaias_px)
-    print(f'Found {sum(np.isnan(sep))} stars with duplicate gaias')
+    logging.info(f'Found {sum(np.isnan(sep))} stars with duplicate gaias')
 
     is_dup = np.isnan(sep)
     dup_gaia_ind = idx[is_dup]
@@ -211,7 +191,7 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     matched_star_indices = matched_star_indices[sep_constraint]
     matched_gaia_indices = matched_gaia_indices[idx[sep_constraint]]
 
-    print('calculating gwcs')
+    logging.info('calculating gwcs')
     gwcs_wcs = wcs_from_points(matched_stars_px, matched_gaias_sky)
 
     # Refine gwcs by removing all more than x stdev's from wcs says they should be
@@ -225,18 +205,18 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     matched_star_indices = matched_star_indices[dist_in_range]
     matched_gaia_indices = matched_gaia_indices[dist_in_range]
 
-    print('refining wcs')
+    logging.info('refining wcs')
     # recalc gwcs WCS from best matches
     refined_gwcs = wcs_from_points(matched_stars_px, matched_gaias_sky, poly_degree=3)
     refined_gwcs_fits = refined_gwcs.to_fits_sip(((0, width), (0, height)))
 
     refined_wcs = WCS(refined_gwcs_fits)
 
-    print('creating data table for fits')
+    logging.info('creating data table for fits')
     fits_tbl = wcs_helpers.create_starinfo_table(stars_tbl, matched_star_indices, gaias_tbl, matched_gaia_indices)
     hdus.append(fits_tbl)
 
-    print('writing fits output file')
+    logging.info('writing fits output file')
     # save to output file
     hdus[0].header.update(refined_gwcs_fits)
 
@@ -245,3 +225,31 @@ def full_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
         hdus.close()
 
     return ccd
+
+def find_stars(data, fwhm_est=2.0, fwhm_min=1.5, threshold_stddevs=4.0, mask=None):
+    '''
+    Finds stars via iraf method and returns table with:
+        id: unique object identification number.
+        xcentroid, ycentroid: object centroid.
+        fwhm: object FWHM.
+        sharpness: object sharpness.
+        roundness: object roundness.
+        pa: object position angle (degrees counter clockwise from the positive x axis).
+        npix: the total number of (positive) unmasked pixels.
+        sky: the local sky value.
+        peak: the peak, sky-subtracted, pixel value of the object.
+        flux: the object instrumental flux.
+        mag: the object instrumental magnitude calculated as -2.5 * log10(flux).
+
+    '''
+    from astropy.stats import sigma_clipped_stats
+    from photutils.detection import IRAFStarFinder
+
+    mean, median, std = sigma_clipped_stats(data, sigma=3.0)
+
+    iraffind = IRAFStarFinder(fwhm=fwhm_est, exclude_border=True, threshold=threshold_stddevs * std)
+    sources = iraffind.find_stars(data, mask=mask)
+    sources.sort('peak', reverse=True) 
+
+    return sources
+

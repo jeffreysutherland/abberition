@@ -13,7 +13,7 @@ from astropy.visualization.stretch import HistEqStretch
 import numpy as np
 from skimage.io import imread, imsave
 
-from abberition import calibration, image
+from abberition import calibration, image, visualize
 
 
 def get_first_available_dirname(path,  pad_length: int=3, always_number: bool=True):
@@ -248,17 +248,7 @@ def save_mono_png(image:CCDData, path, overwrite:bool=True, bits=16, image_scale
         data = np.clip(image.data, 0, max_val)
 
     elif image_scale == ImageScale.HistEq:
-        data = image.data
-        # apply histogram equalization stretch
-        data = image.data
-        stretch = HistEqStretch(data)
-        norm = ImageNormalize(data, stretch=stretch, clip=True)
-        data = norm(data)
-
-        mn = np.min(data)
-        mx = np.max(data)
-
-        data = max_val * ((mx - mn) * data - mn)
+        data = visualize.hist_eq(image.data, max_val)
 
     # convert to proper data type if not already
     if data.dtype != dtype:
