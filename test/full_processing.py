@@ -12,7 +12,7 @@
 # - create hot pixel map
 # - find stars in image
 # - image segmentation
-# - generate background map
+# - extract background
 # - generate psf map
 
 # Generate WCS
@@ -35,15 +35,21 @@
 
 # Post processing
 # - generate color image
-# - 
+# - image convolution (deconvolution)
 
 # Visualization
 # - generate 3d view of focal plane
 # - distortion map
 # - relevant visualizations for each process
+# - display image
+# - overlay coordinates from wcs
+# - overlay data points
+# - display vignetting
+# - display optical system profile
 
 
-# Additional tools
+# Other
 # - standardized serialization format
 # - visual scripting of work-flows
 # - image viewer for all data saved in file 
+

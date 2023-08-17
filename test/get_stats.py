@@ -10,7 +10,7 @@ warnings.simplefilter('ignore', category=AstropyWarning)
 import test_setup
 
 from pathlib import Path
-from abberition import io, library, profile
+from abberition import analysis, io, library
 from ccdproc import ImageFileCollection
 
 astronomy_data_dir = '../../astrodev/astronomy.data/'
@@ -25,7 +25,7 @@ images = ImageFileCollection(path)
 
 for image, image_fn in images.ccds(return_fname=True):
     
-    stats = profile.get_stats(image)
+    stats = analysis.get_stats(image)
 
     s = '\n' + str(image_fn) + ':\n'
     for k, v in stats.items():

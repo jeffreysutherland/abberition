@@ -22,16 +22,22 @@ def hist_eq(data, max_val):
 
     return data
 
-def data_to_image(data):
+def data_to_image(data, max_val=1.0):
     #low = np.nanpercentile(data, 0.001)
     #return vis.make_lupton_rgb(data, data, data, minimum=low, stretch=100, Q=6)
     return hist_eq(data, 1.0)
 
-def draw_stars(im, x_stars, y_stars, style='bo', marker_size=16, stretch=False):
-    if stretch:
-        im = data_to_image(im)
-    plt.figure(figsize=(25,25))
-    plt.imshow(im)
+def new_plot(figsize=(20,20)):
+    plt.figure(figsize=figsize)
+
+def show_plot():
+    plt.show()
+
+def draw_wcs_grid(wcs:WCS, grid_res=20):
+    # configure plot to draw wcs grid overlay
+    pass
+
+def draw_stars(x_stars, y_stars, style='bo', marker_size=16):
     plt.plot(x_stars, y_stars, style, fillstyle="none", ms=marker_size)
 
 def draw_rejected_stars(im, x_stars, y_stars, x_rejected, y_rejected):
@@ -45,8 +51,8 @@ def points_to_image(x, y, val, min_x=0, min_y=0, max_x=2048, max_y=2048, grid_re
     grid_x, grid_y = np.mgrid[min_x:max_x:grid_res, min_y:max_y:grid_res]
     return griddata((x, y), val, (grid_x, grid_y), method='nearest').T
 
-def draw_im_overlay(im, extent=(0, 2048, 0, 2048), alpha=0.25, interp='bicubic', show_scale=False):
-    ix = plt.imshow(im, extent=extent, origin='lower', alpha=alpha, interpolation=interp)
+def draw_im_overlay(im, alpha=1.0, interp='bicubic', cmap='gray', show_scale=False):
+    ix = plt.imshow(im, origin='lower', alpha=alpha, cmap=cmap, interpolation=interp)
     if show_scale:
         plt.colorbar(ix)
 
