@@ -8,6 +8,7 @@ import numpy as np
 from numpy.linalg import norm
 from astropy.visualization import make_lupton_rgb, ImageNormalize
 from astropy.visualization.stretch import HistEqStretch
+import ccdproc as ccdp
 
 def hist_eq(data, max_val):
     # apply histogram equalization stretch
@@ -28,7 +29,7 @@ def data_to_image(data, max_val=1.0):
     return hist_eq(data, 1.0)
 
 def new_plot(figsize=(20,20)):
-    plt.figure(figsize=figsize)
+    return plt.figure(figsize=figsize)
 
 def show_plot():
     plt.show()
@@ -119,4 +120,31 @@ def draw_wcs_distortion(wcs:WCS, grid_res=20, exaggeration=10):
     plt.plot(pX, pY, color='gray', linewidth=1)
     # draw horizontal
     plt.plot(pX.T, pY.T, color='gray', linewidth=1)
+
+def draw_ccd(ccd:ccdp.CCDData, color='gray', stretch=True, show_colorbar=True, fig_size = (10, 10)):
+    # Draw CCD with WCS grid overlay
+    wcs = ccd.wcs
+    
+    im = ccd.data
+    if stretch:
+        im = data_to_image(im)
+
+    # create a new plot
+    fig = plt.figure(figsize=fig_size)
+
+    ax = plt.subplot(projection=wcs, label='overlays')
+
+    ax_im = ax.imshow(im, cmap=color)
+
+    ax.coords.grid(True, color='white', ls='solid')
+    ax.coords[0].set_axislabel(wcs.wcs.ctype[0])
+    ax.coords[1].set_axislabel(wcs.wcs.ctype[1])
+
+    overlay = ax.get_coords_overlay('fk5')
+    overlay.grid(color='white', ls='dotted')
+    overlay[0].set_axislabel('Right Ascension (J2000)')
+    overlay[1].set_axislabel('Declination (J2000)')
+
+    if show_colorbar:
+        fig.colorbar(mappable=ax_im)
 

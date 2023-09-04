@@ -95,7 +95,7 @@ def solve_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     logging.info('Finding stars in image.')
     stars_tbl = find_stars(data, fwhm_est, fwhm_min, find_threshold)
 
-    return
+    #return
 
     if len(stars_tbl) < min_star_count:
         logging.error(f'Not enough stars found - try tuning threshold and fwhm estimate')
@@ -206,6 +206,7 @@ def solve_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     matched_gaia_indices = matched_gaia_indices[dist_in_range]
 
     logging.info('refining wcs')
+    
     # recalc gwcs WCS from best matches
     refined_gwcs = wcs_from_points(matched_stars_px, matched_gaias_sky, poly_degree=3)
     refined_gwcs_fits = refined_gwcs.to_fits_sip(((0, width), (0, height)))
@@ -217,14 +218,19 @@ def solve_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     hdus.append(fits_tbl)
 
     logging.info('writing fits output file')
+    
     # save to output file
     hdus[0].header.update(refined_gwcs_fits)
 
     if out_fn is not None:
         hdus.writeto(out_fn, overwrite=True)
         hdus.close()
-
-    return ccd
+        wcs_ccd = CCDData.read(out_fn, unit="adu")  
+    else:
+        wcs_ccd = ccd.copy()
+        wcs_ccd.wcs = refined_wcs
+    
+    return wcs_ccd
 
 def find_stars(data, fwhm_est=2.0, fwhm_min=1.5, threshold_stddevs=4.0, mask=None):
     '''
