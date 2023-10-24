@@ -164,3 +164,4 @@ cython_debug/
 library.bk/
 
 .api_keys
+*.~vsdx

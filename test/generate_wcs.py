@@ -12,7 +12,7 @@ from abberition import astrometry, io, visualize
 from astropy.utils.exceptions import AstropyWarning
 warnings.simplefilter('ignore', category=AstropyWarning)
 
-data_path = Path('../.output/lights_g/2023.05.12/m51/lights')
+data_path = Path('../.output/lights_g/2023.05.12/m51/lights/tmp')
 wcs_path = Path('../.output/lights_g/2023.05.12/m51/wcs')
 
 ifc = io.get_images(data_path, True, sanitize_headers=True)

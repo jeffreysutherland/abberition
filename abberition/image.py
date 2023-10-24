@@ -196,3 +196,4 @@ def __validate_gain(header):
         logging.error(f'Mandatory keyword \'{key}\' expected an integer, found {header[key]}.')
         raise ValueError(f'Mandatory keyword \'{key}\' expected an integer, found {header[key]}')
  
+ 
