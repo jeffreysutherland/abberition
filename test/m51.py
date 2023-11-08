@@ -23,18 +23,14 @@ logging.debug(f'data path: {astronomy_data_path.absolute()}')
 src_path = astronomy_data_path
 
 light_src_root = astronomy_data_path
-flat_src_root = Path('../.output/flats/')
+flat_src_root = Path('../.output/calib/')
 light_out_root = Path('../.output/lights_g/')
 
-# (light_dir, flat_dirs)
+# (light_dir, [flat_dirs])
 data_sets = [ 
         #  light_dir          flat_dirs
         ('2023.05.12/m51', ['2023.05.12/sloan_r_flat', '2023.05.12/sloan_g_flat']),
         ('2023.05.18/m51', ['2023.05.12/sloan_g_flat', '2023.05.18/sloan_i_flat', '2023.05.18/ha_flat']),
-
-        # retry with different flats
-        #('2023.05.18/m51/.tmp_g', ['2023.05.12/sloan_g_flat']),
-
     ]
 
 # backup and/or create the lights directory

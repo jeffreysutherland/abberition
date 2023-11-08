@@ -3,6 +3,7 @@
 from enum import Enum
 import logging
 from os import makedirs, rename
+import os
 from os.path import exists
 from pathlib import Path
 import tempfile
@@ -150,6 +151,10 @@ def mkdirs_backup_existing(path, pad_length:int=3):
     makedirs(name=str(path), exist_ok=False)
 
     return bk_path
+
+def mkdirs(path):
+    makedirs(name=str(path), exist_ok=True)
+    
 
 def mkdirs_rm_existing(path):
     '''
@@ -352,7 +357,16 @@ def add_keys_to_dir(src:Path|str|ImageFileCollection, kvpairs:dict, out_path:Pat
 
 def get_images(path:Path|str, copy_to_temp_dir:bool=True, filters:dict=None, sanitize_headers:bool=False, overwrite:bool=False):
     keywords = list(filters.keys()) if filters is not None else '*'
-    ifc = ImageFileCollection(path, keywords = keywords)
+
+    if os.path.isfile(path):
+        filename = Path(path).name
+        path = Path(path).parent
+        ifc = ImageFileCollection(path, keywords = keywords, filenames=[filename])
+    elif os.path.isdir(path):
+        ifc = ImageFileCollection(path, keywords = keywords)
+    else:
+        raise ValueError(f'Invalid path: {path}')
+    
     print(f'ifc before filtering: {ifc.summary}')
 
     if filters is not None:

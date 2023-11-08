@@ -24,7 +24,7 @@ for bias_set in bias_sets:
     logging.info(f'Creating bias from \'{bias_src_path}\'')
 
     # load bias images from directory
-    biases = io.get_images(bias_src_path, True, sanitize_headers=True)
+    biases = io.get_images(bias_src_path, True, filters={'imagetyp':'bias'}, sanitize_headers=True)
 
     bias_image = standard.create_bias(biases)
 

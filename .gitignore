@@ -160,7 +160,7 @@ cython_debug/
 #.idea/
 
 .output/
-.output.bk/
+.*.bk*/
 library.bk/
 
 .api_keys

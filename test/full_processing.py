@@ -1,10 +1,14 @@
 # Full processing of images
 
 # Calibrate lights
-# + create bias
-# + create dark
-# + create flat
-# + calibrate lights
+## create flats
+## calibrate lights
+
+# Solve image WCS
+# find stars in image
+# initial wcs from astrometry.net
+# find gaia stars in image based on wcs
+# refine wcs based on gaia stars
 
 # Additional calibration
 # - create bad pixel map

@@ -107,7 +107,7 @@ def create_dark(darks: ImageFileCollection, sigma_low:float=5.0, sigma_high:floa
     return combined_dark
 
 
-def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=np.float32, data_max=None, reject_too_dark=True, reject_too_bright=True, ignore_temp=False):
+def create_flats(ifc_flats:ImageFileCollection, out_path:Path=None, out_dir:str=None, min_exp=1.5, dtype=np.float32, data_max=None, reject_too_dark=True, reject_too_bright=True, ignore_temp=False, overwrite=True):
     from pathlib import Path
     from os import makedirs
     from ccdproc import CCDData
@@ -118,8 +118,15 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
     logging.info('Creating flat standard')
     
     # create output dir
-    out_path = Path(out_dir)
-    io.mkdirs_backup_existing(out_path)
+    if out_path is None:
+        if out_dir is None:
+            raise ValueError('Must specify either out_path or out_dir')
+        else:
+            out_path = Path(out_dir)
+    else:
+        raise ValueError('Must specify either out_path or out_dir, not both')
+
+    io.mkdirs(out_path)
     
     # pre-filter flat collection for flats only
     flat_filter = {'imagetyp':'flat'}
@@ -198,7 +205,7 @@ def create_flats(ifc_flats:ImageFileCollection, out_dir:str, min_exp=1.5, dtype=
 
                 logging.debug(f'saving calibrated flat: {flat_fn}')
                 flat_temp_fn = str(working_path / flat_fn)
-                calibrated_flat.write(flat_temp_fn, overwrite=True)
+                calibrated_flat.write(flat_temp_fn, overwrite=overwrite)
                 
                 to_combine.append(flat_temp_fn)
                 logging.debug(f'Calibrated ', flat_temp_fn)
