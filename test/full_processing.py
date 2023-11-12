@@ -1,8 +1,45 @@
-# Full processing of images
+"""
+This script performs full processing of astronomical images, including calibration, WCS solution, additional calibration,
+image combination, optical system analysis, astronomy analysis, post processing, visualization, and other tasks.
+
+Author: Jeff Sutherland
+Date: 2023/11/09
+
+"""
+
+import logging
+import warnings
+logging.getLogger().setLevel(level=logging.INFO)
+
+import test_setup
+
+from pathlib import Path
+from abberition.processor import Processor
+
+from astropy.utils.exceptions import AstropyWarning
+warnings.simplefilter('ignore', category=AstropyWarning)
+
+
+# Define data dirs
+lights_path = Path('E:\\astro\\test_data\\processor_test\\lights')
+flats_path = Path('E:\\astro\\test_data\\processor_test\\flats')
+dest_path = Path('E:\\astro\\test_data\\processor_test\\out')
+
+# Create processor
+proc = Processor(dest_path)
+
+# Set data dirs
+proc.set_lights(path=lights_path)
+proc.set_flats(path=flats_path)
+
+proc.calibrate_flats()
+proc.calibrate_lights()
+
+proc.summary()
 
 # Calibrate lights
-## create flats
-## calibrate lights
+# create flats
+# calibrate lights
 
 # Solve image WCS
 # find stars in image
@@ -55,5 +92,5 @@
 # Other
 # - standardized serialization format
 # - visual scripting of work-flows
-# - image viewer for all data saved in file 
+# - image viewer for all data saved in file
 

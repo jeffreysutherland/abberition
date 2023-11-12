@@ -154,7 +154,11 @@ def mkdirs_backup_existing(path, pad_length:int=3):
 
 def mkdirs(path):
     makedirs(name=str(path), exist_ok=True)
-    
+
+def rmdir(path):
+    from shutil import rmtree
+    if exists(path):
+        rmtree(path)
 
 def mkdirs_rm_existing(path):
     '''
@@ -355,7 +359,7 @@ def add_keys_to_dir(src:Path|str|ImageFileCollection, kvpairs:dict, out_path:Pat
             header[key] = value
 
 
-def get_images(path:Path|str, copy_to_temp_dir:bool=True, filters:dict=None, sanitize_headers:bool=False, overwrite:bool=False):
+def get_images(path:Path|str, copy_to_temp_dir:bool=True, target_dir:Path|str=None, filters:dict=None, sanitize_headers:bool=False, overwrite:bool=False):
     keywords = list(filters.keys()) if filters is not None else '*'
 
     if os.path.isfile(path):
@@ -367,19 +371,24 @@ def get_images(path:Path|str, copy_to_temp_dir:bool=True, filters:dict=None, san
     else:
         raise ValueError(f'Invalid path: {path}')
     
-    print(f'ifc before filtering: {ifc.summary}')
+    if target_dir is not None and copy_to_temp_dir:
+        raise ValueError('Cannot specify both target_dir and copy_to_temp_dir')
+    
+    logging.debug(f'ifc before filtering: {ifc.summary}')
 
     if filters is not None:
         ifc = ifc.filter(**filters)
         logging.debug(f'Filtering images by filters: {filters}')
 
-    print(f'ifc after filtering: {ifc.summary}')
+    logging.debug(f'ifc after filtering: {ifc.summary}')
 
     if copy_to_temp_dir:
-        tmp_dir = tempfile.mkdtemp()
-        logging.debug(f'Copying images to temp dir for sanitization ({tmp_dir})')
+        target_dir = tempfile.mkdtemp()
+    
+    if target_dir is not None:
+        logging.debug(f'Copying images to target for sanitization ({target_dir})')
 
-        for h in ifc.headers(save_location=tmp_dir):
+        for h in ifc.headers(save_location=target_dir):
             if sanitize_headers:
                 image.sanitize(h)
                 logging.debug('sanitizing...')        
@@ -391,6 +400,18 @@ def get_images(path:Path|str, copy_to_temp_dir:bool=True, filters:dict=None, san
                 logging.debug('no copy sanitizing...')
 
     logging.debug('Creating ImageFileCollection from temp dir')
-    ifc = ImageFileCollection(tmp_dir, keywords='*')
+    ifc = ImageFileCollection(target_dir, keywords='*')
 
     return ifc
+
+def copy_ifc(ifc:ImageFileCollection, dest_path:Path|str):
+    if not exists(dest_path):
+        mkdirs(dest_path)
+
+    files = []
+    for _, fn in ifc.headers(save_location=dest_path, return_fname=True):
+        files.append(fn)
+
+    new_ifc = ImageFileCollection(dest_path, filenames=files)
+        
+
