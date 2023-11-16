@@ -2,7 +2,7 @@
 ## IO
 ### Load ImageFileCollection of images in folder
 ```
-biases = io.get_images(bias_src_path, True, filters={'imagetyp':'bias'}, sanitize_headers=True)
+biases = io.get_images(bias_src_path, dest_path, filters={'imagetyp':'bias'}, sanitize_headers=True)
 ```
 
 ### Generate filename for image

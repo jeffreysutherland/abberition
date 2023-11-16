@@ -107,7 +107,7 @@ def create_dark(darks: ImageFileCollection, sigma_low:float=5.0, sigma_high:floa
     return combined_dark
 
 
-def create_flats(ifc_flats:ImageFileCollection, out_path:Path=None, out_dir:str=None, min_exp=1.5, dtype=np.float32, data_max=None, reject_too_dark=True, reject_too_bright=True, ignore_temp=False, overwrite=True):
+def create_flats(ifc_flats:ImageFileCollection, out_path:Path=None, min_exp=1.5, dtype=np.float32, data_max=None, reject_too_dark=True, reject_too_bright=True, ignore_temp=False, overwrite=True):
     from pathlib import Path
     from os import makedirs
     from ccdproc import CCDData
@@ -118,14 +118,6 @@ def create_flats(ifc_flats:ImageFileCollection, out_path:Path=None, out_dir:str=
     logging.info('Creating flat standard')
     
     # create output dir
-    if out_path is None:
-        if out_dir is None:
-            raise ValueError('Must specify either out_path or out_dir')
-        else:
-            out_path = Path(out_dir)
-    else:
-        raise ValueError('Must specify either out_path or out_dir, not both')
-
     io.mkdirs(out_path)
     
     # pre-filter flat collection for flats only

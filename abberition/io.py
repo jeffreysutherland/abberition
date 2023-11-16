@@ -359,32 +359,27 @@ def add_keys_to_dir(src:Path|str|ImageFileCollection, kvpairs:dict, out_path:Pat
             header[key] = value
 
 
-def get_images(path:Path|str, copy_to_temp_dir:bool=True, target_dir:Path|str=None, filters:dict=None, sanitize_headers:bool=False, overwrite:bool=False):
+def make_temp_dir():
+    return tempfile.mkdtemp()
+
+
+def get_images(path:Path|str, target_dir:Path|str=None, filters:dict=None, sanitize_headers:bool=False, overwrite:bool=False):
     keywords = list(filters.keys()) if filters is not None else '*'
 
     if os.path.isfile(path):
         filename = Path(path).name
         path = Path(path).parent
-        ifc = ImageFileCollection(path, keywords = keywords, filenames=[filename])
+        ifc = ImageFileCollection(path, keywords=keywords, filenames=[filename])
     elif os.path.isdir(path):
-        ifc = ImageFileCollection(path, keywords = keywords)
+        ifc = ImageFileCollection(path, keywords=keywords)
     else:
         raise ValueError(f'Invalid path: {path}')
-    
-    if target_dir is not None and copy_to_temp_dir:
-        raise ValueError('Cannot specify both target_dir and copy_to_temp_dir')
     
     logging.debug(f'ifc before filtering: {ifc.summary}')
 
     if filters is not None:
         ifc = ifc.filter(**filters)
-        logging.debug(f'Filtering images by filters: {filters}')
 
-    logging.debug(f'ifc after filtering: {ifc.summary}')
-
-    if copy_to_temp_dir:
-        target_dir = tempfile.mkdtemp()
-    
     if target_dir is not None:
         logging.debug(f'Copying images to target for sanitization ({target_dir})')
 
@@ -393,11 +388,12 @@ def get_images(path:Path|str, copy_to_temp_dir:bool=True, target_dir:Path|str=No
                 image.sanitize(h)
                 logging.debug('sanitizing...')        
     else:
-        logging.debug('no copy sanitizing...')
+        logging.debug('Sanitizing images in-place')
         for h in ifc.headers(overwrite=overwrite):
             if sanitize_headers:
+                if not overwrite:
+                    raise ValueError('Can\'t sanitize images in place if not overwritable')
                 image.sanitize(h)
-                logging.debug('no copy sanitizing...')
 
     logging.debug('Creating ImageFileCollection from temp dir')
     ifc = ImageFileCollection(target_dir, keywords='*')
@@ -414,4 +410,7 @@ def copy_ifc(ifc:ImageFileCollection, dest_path:Path|str):
 
     new_ifc = ImageFileCollection(dest_path, filenames=files)
         
-
+def is_subpath(parent_path, path):
+    path = os.path.abspath(path)
+    parent_path = os.path.abspath(parent_path)
+    return os.path.commonprefix([path, parent_path]) == parent_path

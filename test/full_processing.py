@@ -23,19 +23,24 @@ warnings.simplefilter('ignore', category=AstropyWarning)
 # Define data dirs
 lights_path = Path('E:\\astro\\test_data\\processor_test\\lights')
 flats_path = Path('E:\\astro\\test_data\\processor_test\\flats')
-dest_path = Path('E:\\astro\\test_data\\processor_test\\out')
+dest_path = Path('E:\\astro\\test_data\\processor_test\\processed')
+
+
+flats_calibrated_path = Path('E:\\astro\\test_data\\processor_test\\processed\\flats_cal')
 
 # Create processor
 proc = Processor(dest_path)
 
 # Set data dirs
-proc.set_lights(path=lights_path)
-proc.set_flats(path=flats_path)
+#proc.set_source_lights(path=lights_path)
+#proc.set_source_flats(path=flats_path)
 
 proc.calibrate_flats()
 proc.calibrate_lights()
+proc.solve_astrometry()
+proc.stack_lights()
 
-proc.summary()
+#proc.summary()
 
 # Calibrate lights
 # create flats

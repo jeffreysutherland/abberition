@@ -3,6 +3,7 @@ from ccdproc import ImageFileCollection
 import logging
 
 from . import calibration
+from . import combine
 from . import io
 from . import standard
 
@@ -45,35 +46,52 @@ class Processor:
         self.flat_src_path = self.dest_path / 'flats_src'
         self.flat_calib_path = self.dest_path / 'flats_cal'
 
-
     def set_source_lights(self, path:Path=None, ifc:ImageFileCollection=None, filters:dict=None):
-        self.clear_lights()
-        io.mkdirs_rm_existing(self.light_src_path)
-        self.lights_src_ifc = self.__get_ifc(path, ifc, self.light_src_path, filters)
+        dest_path = path
+        if dest_path == None and ifc != None:
+            dest_path = ifc.location
+        
+        # if path is the intended source path, don't copy - just get an ifc
+        copy_files = dest_path.absolute() != self.light_src_path.absolute()
+
+        if copy_files:
+            self.clear_lights()
+            io.mkdirs_rm_existing(self.light_src_path)
+            self.lights = self.__get_ifc(path, ifc, self.light_src_path, filters)
+        else:
+            # don't clear the source lights
+            self.clear_lights(clear_src=False)
+            self.lights_src = self.__get_ifc(path, ifc, self.light_src_path, filters)
 
 
     def set_calibrated_lights(self, path:Path=None, ifc:ImageFileCollection=None, filters:dict=None):
         self.clear_lights()
         io.mkdirs_rm_existing(self.light_calib_path)
-        self.lights_calib_ifc = self.__get_ifc(path, ifc, self.light_calib_path, filters)
+        self.lights_calib = self.__get_ifc(path, ifc, self.light_calib_path, filters)
 
     
     def set_solved_lights(self, path:Path=None, ifc:ImageFileCollection=None, filters:dict=None):
         self.clear_lights()
         io.mkdirs_rm_existing(self.light_solved_path)
-        self.lights_solved_ifc = self.__get_ifc(path, ifc, self.light_solved_path, filters)
+        self.lights_solved = self.__get_ifc(path, ifc, self.light_solved_path, filters)
 
 
-    def clear_lights(self):
-        self.lights_src = None
-        self.lights_calib = None
-        self.lights_solved = None
-        self.lights_stacked = None
+    def clear_lights(self, clear_src:bool=True, clear_calib:bool=True, clear_solved:bool=True, clear_stacked:bool=True):
+        if clear_src:
+            self.lights_src = None
+            io.rmdir(self.light_src_path)
 
-        io.rmdir(self.light_src_path)
-        io.rmdir(self.light_calib_path)
-        io.rmdir(self.light_solved_path)
-        io.rmdir(self.light_stacked_path)
+        if clear_calib:
+            self.lights_calib = None
+            io.rmdir(self.light_calib_path)
+        
+        if clear_solved:
+            self.lights_solved = None
+            io.rmdir(self.light_solved_path)
+    
+        if clear_stacked:
+            self.lights_stacked = None
+            io.rmdir(self.light_stacked_path)
 
 
     def set_source_flats(self, path:Path=None, ifc:ImageFileCollection=None, filters:dict=None):
@@ -103,7 +121,7 @@ class Processor:
         elif ifc is not None:
             ifc = io.copy_ifc(ifc, target_path)
         elif src_path is not None:
-            ifc = io.get_images(src_path, target_path=target_path, filters=filters, sanitize_headers=True)
+            ifc = io.get_images(src_path, target_dir=target_path, copy_to_temp_dir=False, filters=filters, sanitize_headers=True)
         else:
             raise ValueError('Must specify one of path or ifc')
 
@@ -141,11 +159,51 @@ class Processor:
 
             self.lights_calib = ImageFileCollection(self.light_calib_path, filenames=calib_fns)
 
-    def stack_lights(self):
+    def stack_lights(self, resolution:float=1.0):
         io.mkdirs_rm_existing(self.light_stacked_path)
         
-        if self.lights_calib is not None:
+        images = None
+        reprojection = None
 
+        stacked_images = []
+
+        if self.lights_solved is not None:
+            logging.info('Stacking solved lights')
+            images = self.lights_solved
+            reprojection = combine.get_reprojection(images, resolution)
+        elif self.lights_calib is not None:
+            logging.info('Stacking calibrated lights')
+            images = self.lights_calib
+        elif self.lights_src is not None:
+            logging.info('Stacking source lights')
+            images = self.lights_src
+        else:
+            raise ValueError('Must have lights to stack')
+
+        if images is not None:
+            # get all optical filters from keywords
+            filters = set(h['filter'] for h in images.headers())
+
+            # for each filter
+            for filter in filters:
+                # get all images for that filter
+                filter_images = images.filter(filter=filter)
+
+                ccd = None
+
+                if reprojection is not None:
+                    ccd = combine.combine_solved_images(filter_images, reprojection)
+                else:
+                    ccd = combine.combine_solved_images(filter_images) 
+
+                if ccd is not None:
+                    fn = self.light_stacked_path / f'{filter}.fits'
+                    ccd.write(fn)
+                    stacked_images.append(ccd)
+
+        self.lights_stacked = ImageFileCollection(location=self.light_stacked_path, filenames=stacked_images)
+
+        return self.lights_stacked
 
     def solve_astrometry(self):
         io.mkdirs_rm_existing(self.light_solved_path)
@@ -173,4 +231,4 @@ class Processor:
         self.calibrate_flats()
         self.calibrate_lights()
         self.solve_astrometry()
-        self.solve_astrometry()
+        self.stack_lights()
