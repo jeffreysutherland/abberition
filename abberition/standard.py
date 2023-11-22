@@ -202,7 +202,6 @@ def create_flats(ifc_flats:ImageFileCollection, out_path:Path=None, min_exp=1.5,
                 to_combine.append(flat_temp_fn)
                 logging.debug(f'Calibrated ', flat_temp_fn)
 
-
         logging.debug(f'Combining {len(to_combine)} calibrated flats')
     
         # create scaler as inverse of median for combination

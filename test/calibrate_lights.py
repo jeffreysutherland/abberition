@@ -80,6 +80,7 @@ for data_set in data_sets:
 
     # calibrate lights
     logging.info(f'Processing lights from \'{light_src_path}\'')
+    tmp_dir = io.
     raw_lights = io.get_images(light_src_path, True, sanitize_headers=True)
 
     io.mkdirs_backup_existing(out_path / 'lights')

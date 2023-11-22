@@ -381,12 +381,11 @@ def get_images(path:Path|str, target_dir:Path|str=None, filters:dict=None, sanit
         ifc = ifc.filter(**filters)
 
     if target_dir is not None:
-        logging.debug(f'Copying images to target for sanitization ({target_dir})')
-
+        logging.debug(f'Copying images to target sanitization ({target_dir})')
         for h in ifc.headers(save_location=target_dir):
             if sanitize_headers:
-                image.sanitize(h)
                 logging.debug('sanitizing...')        
+                image.sanitize(h)
     else:
         logging.debug('Sanitizing images in-place')
         for h in ifc.headers(overwrite=overwrite):

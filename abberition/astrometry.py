@@ -3,7 +3,7 @@ from ccdproc import CCDData
 # find stars in the image
 
 
-def solve_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
+def solve_wcs(ccd:CCDData, out_fn=None):
     '''
     WCS refinement flow:
     - load image
@@ -58,7 +58,6 @@ def solve_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
         sys.path.append(p)
         
     from . import wcs_helpers
-    #from . import visualize
 
     log_status = True
     log_plots = True
@@ -137,17 +136,23 @@ def solve_wcs(ccd:CCDData, out_fn=None, overwrite=False, **kwargs):
     def match_coords_px(stars_px, catalog_px):
         #  idx: indices into catalog_sky of the closest star in the catalog
         #  sep: separation of the closest star, NaN if bad result
-        indices = []
-        separations = []
 
         num_stars = len(stars_px[0])
+        separations = [] #1.0e42 * np.ones(num_stars, dtype=np.float32)
+        indices = [] #np.zeros(num_stars, dtype=np.int32)
+
         for i in range(num_stars):
+            # get distances to other stars
             seps = get_dists(stars_px[:,i], catalog_px)
             
-            seps[i] = 1.0e42
+            # choose the closest
             min_idx = seps.argmin()
-            indices.append(min_idx)
+
+            # store the separation
+            #separations[i] = seps[min_idx]
+            #indices[i] = min_idx
             separations.append(seps[min_idx])
+            indices.append(min_idx)
 
         indices = np.array(indices)
         separations = np.array(separations)

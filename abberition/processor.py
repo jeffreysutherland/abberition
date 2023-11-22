@@ -1,9 +1,12 @@
-from pathlib import Path
 from ccdproc import ImageFileCollection
 import logging
+import numpy as np
+from pathlib import Path
 
+from . import astrometry
 from . import calibration
 from . import combine
+from . import conversion
 from . import io
 from . import standard
 
@@ -57,7 +60,7 @@ class Processor:
         if copy_files:
             self.clear_lights()
             io.mkdirs_rm_existing(self.light_src_path)
-            self.lights = self.__get_ifc(path, ifc, self.light_src_path, filters)
+            self.lights_src = self.__get_ifc(path, ifc, self.light_src_path, filters)
         else:
             # don't clear the source lights
             self.clear_lights(clear_src=False)
@@ -97,14 +100,15 @@ class Processor:
     def set_source_flats(self, path:Path=None, ifc:ImageFileCollection=None, filters:dict=None):
         self.clear_flats()
         io.mkdirs_rm_existing(self.flat_src_path)
+
         self.flats_src = self.__get_ifc(path, ifc, self.flat_src_path, filters)
 
 
     def set_calibrated_flats(self, path:Path=None, ifc:ImageFileCollection=None, filters:dict=None):
-        io.mkdirs_rm_existing(self.flats_src_path)
+        self.clear_flats()
+        io.mkdirs_rm_existing(self.flat_calib_path)
 
-        self.flats_calib = None
-        self.flats_src = self.__get_ifc(path, ifc, self.flat_calib_path, filters)
+        self.flats_calib = self.__get_ifc(path, ifc, self.flat_calib_path, filters)
         
 
     def clear_flats(self):
@@ -121,7 +125,7 @@ class Processor:
         elif ifc is not None:
             ifc = io.copy_ifc(ifc, target_path)
         elif src_path is not None:
-            ifc = io.get_images(src_path, target_dir=target_path, copy_to_temp_dir=False, filters=filters, sanitize_headers=True)
+            ifc = io.get_images(src_path, target_dir=target_path, filters=filters, sanitize_headers=True)
         else:
             raise ValueError('Must specify one of path or ifc')
 
@@ -133,7 +137,7 @@ class Processor:
         io.mkdirs_rm_existing(self.flat_calib_path)
 
         if self.flats_src is None:
-            raise ValueError('Must call set_source_flats before calibrate_flats')
+            raise ValueError('Must call set source flats before calibrate_flats')
         else:
             self.flats_calib = standard.create_flats(self.flats_src, out_path=self.flat_calib_path, min_exp=1.5, reject_too_dark=False, ignore_temp=True, overwrite=True)
 
@@ -152,10 +156,12 @@ class Processor:
         if self.lights_src is not None:
             calib_fns = []
 
-            for src, src_fn in self.lights_src.ccds(return_fn=True):
-                calib_light = calibration.calibrate_light(src, self.flats)
-                calib_fns.append(src_fn)
+            for src, src_fn in self.lights_src.ccds(return_fname=True):
+                print('foo')
+                calib_light = calibration.calibrate_light(src, self.flats_calib)
+                calib_light = conversion.to_float32(calib_light)
                 calib_light.write(self.light_calib_path / src_fn)
+                calib_fns.append(src_fn)
 
             self.lights_calib = ImageFileCollection(self.light_calib_path, filenames=calib_fns)
 
@@ -198,8 +204,9 @@ class Processor:
 
                 if ccd is not None:
                     fn = self.light_stacked_path / f'{filter}.fits'
+                    ccd = conversion.to_float32(ccd)
                     ccd.write(fn)
-                    stacked_images.append(ccd)
+                    stacked_images.append(fn)
 
         self.lights_stacked = ImageFileCollection(location=self.light_stacked_path, filenames=stacked_images)
 
@@ -209,9 +216,25 @@ class Processor:
         io.mkdirs_rm_existing(self.light_solved_path)
 
         if self.lights_calib is not None:
+            logging.info('Solving astrometry for calibrated lights')
+            lights = self.lights_calib
+        elif self.lights_src is not None:
+            logging.info('Solving astrometry for source lights')
+            lights = self.lights_src
+        else:
+            raise ValueError('Must have lights to solve')
+        
+        solved_images = []
 
-            wcs_path = self.dest_path / 'wcs'
-            self.lights_solved = standard.solve_astrometry(self.lights, wcs_path)
+        for light, light_fn in lights.ccds(return_fname=True):
+            logging.info(f'Solving \'{light_fn}\'')
+            light_dest = self.light_solved_path / light_fn
+
+            solved_image = astrometry.solve_wcs(light, light_dest)
+            solved_images.append(light_fn)
+        
+        self.lights_solved = ImageFileCollection(location=self.light_solved_path, filenames=solved_images)
+
 
     def summary(self):
         self.__log_ifc(self.lights_src, 'lights_src')
